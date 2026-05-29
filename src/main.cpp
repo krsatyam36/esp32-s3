@@ -10,8 +10,8 @@
 // ===================
 // WIFI CREDENTIALS
 // ===================
-const char* ssid = "Airtel_Home";         // <--- CHANGE THIS
-const char* password = "Satyam@Kestopur"; // <--- CHANGE THIS
+const char* ssid = "1";         // <--- CHANGE THIS
+const char* password = "ThereisHope"; // <--- CHANGE THIS
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 
