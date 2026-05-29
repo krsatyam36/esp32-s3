@@ -44,17 +44,22 @@ It includes:
 - The **Arduino firmware** (uploaded via PlatformIO) that captures frames and serves an MJPEG stream over WiFi.
 - A **custom Python viewer** (`raw_view.py`) that reliably displays the stream without the timeout errors often seen with OpenCV’s `VideoCapture`.
 
-All steps are covered, from installing Python tools to pushing the final code to GitHub.
+All steps are covered, from installing Python tools to uploading firmware to the board.
 
 ## Features
 
-- 🚀 **Low‑latency streaming** – custom raw JPEG buffering avoids OpenCV timeouts.
-- 📷 **MJPEG over WiFi** – direct camera feed from the ESP32S3 Sense.
-- 🔧 **One‑command PlatformIO setup** – fully configured for PSRAM and Arduino framework.
-- 🐍 **Python viewer** – lightweight, uses only `opencv-python` and `numpy`.
-- 💾 **PSRAM enabled** – necessary for the camera buffer to work correctly.
-- 📡 **Auto‑connects to your WiFi** – just set SSID and password.
-- 🖥️ **Works on Linux** (Ubuntu tested) – harmless Qt warnings are noted and can be ignored.
+- 🚀 **Low-latency MJPEG streaming** over WiFi
+- 📷 **Snapshot capture** — press `s` or use the dashboard
+- 🎥 **Video recording** — toggle with `r`, saves to `recordings/`
+- 🔄 **Resolution switching** — `1` (SVGA) / `2` (UXGA) keys or dashboard
+- 🧑 **Face detection overlay** — toggle with `f`
+- 📱 **QR code reader** — toggle with `z`, decodes in real time
+- 🏃 **Motion detection** — toggle with `m`, highlights movement
+- 💡 **LED control** — toggle with `l`, flash with `L`
+- 📊 **Telemetry overlay** — toggle with `t` (heap, uptime, RSSI, temp, PSRAM)
+- 🌐 **Web dashboard** — full control UI at `http://IP/dashboard`
+- 📡 **OTA updates** — upload firmware over WiFi via ArduinoOTA
+- 🔁 **Auto WiFi reconnect** — handles disconnects gracefully
 
 ## System Prerequisites
 
@@ -182,36 +187,104 @@ Run the viewer:
 python raw_view.py
 ```
 
-**Linux users:** If you see `QFontDatabase: Cannot find font directory`, just ignore it – it’s a harmless Qt warning and the video window will appear as usual.
+**Keyboard Controls:**
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `s` | Save snapshot to `snapshots/` |
+| `r` | Toggle video recording to `recordings/` |
+| `1` | Set resolution to SVGA (800×600) |
+| `2` | Set resolution to UXGA (1600×1200) |
+| `f` | Toggle face detection |
+| `z` | Toggle QR code reader |
+| `m` | Toggle motion detection |
+| `t` | Toggle telemetry overlay |
+| `l` | Toggle built-in LED |
+| `L` | Flash LED 5 times |
+| `h` | Show help |
+
+**Linux users:** If you see `QFontDatabase: Cannot find font directory`, just ignore it — it’s a harmless Qt warning and the video window will appear as usual.
+
+### 7. (Optional) Use the Web Dashboard
+
+Open a browser and navigate to:
+
+```
+http://IP/dashboard
+```
+
+The dashboard provides the same controls through a web UI: view the live stream, change resolution, toggle the LED, take snapshots, and monitor telemetry in real time.
+
+### 8. (Optional) OTA Firmware Updates
+
+Once the board is on WiFi, you can upload new firmware over the air instead of via USB:
+
+```bash
+pio run -t upload --upload-port IP
+```
+
+The board identifies itself as `xiao-esp32s3-cam` on the network.
 
 ## How It Works
 
 ```mermaid
-flowchart LR
-    A[ESP32 Camera] --> B[Capture Frame]
-    B --> C[MJPEG HTTP Server]
-    C -->|WiFi| D[Python Viewer]
-    D --> E[Raw JPEG Buffer]
-    E --> F[Decode Frame]
-    F --> G[OpenCV Display]
+flowchart TB
+    subgraph ESP32["ESP32-S3 Firmware"]
+        CAM[Camera] --> ST[MJPEG Stream]
+        CAM --> SN[Snapshot]
+        SEN[Sensor API] --> RES[Resolution Switch]
+        OTA[ArduinoOTA]
+        WLED[GPIO 21 LED]
+        TELE[Telemetry JSON]
+        DASH[Web Dashboard HTML]
+    end
+
+    subgraph Viewer["Python Viewer (raw_view.py)"]
+        BUF[Raw JPEG Buffer] --> DEC[Decode Frame]
+        DEC --> FACE[Face Detection]
+        DEC --> QR[QR Reader]
+        DEC --> MOT[Motion Detection]
+        DEC --> REC[Recording]
+        DEC --> SNAP[Snapshot Save]
+        DEC --> TEL_OV[Telemetry Overlay]
+        DEC --> DISP[OpenCV Display]
+        CTRL[Keyboard Input] --> ESP32
+    end
+
+    ESP32 -->|WiFi MJPEG| Viewer
+    Viewer -->|HTTP API| ESP32
 ```
 
 ```mermaid
 sequenceDiagram
-    participant ESP32 as ESP32-S3
-    participant WiFi as WiFi Network
-    participant Viewer as raw_view.py
+    participant CAM as Camera
+    participant ESP as ESP32 Server
+    participant PY as raw_view.py
+    participant DASH as Web Dashboard
 
-    ESP32->>ESP32: Init camera & start HTTP server
-    ESP32->>WiFi: Stream Ready at http://IP
-    Viewer->>WiFi: HTTP GET /
-    WiFi->>Viewer: MJPEG stream (boundary-separated JPEGs)
-    loop Every frame
-        Viewer->>Viewer: Read raw bytes into buffer
-        Viewer->>Viewer: Find JPEG markers 0xFFD8…0xFFD9
-        Viewer->>Viewer: Decode & display with FPS overlay
-    end
-    Viewer->>Viewer: Press 'q' to quit
+    CAM->>ESP: Capture JPEG frame
+    ESP->>PY: MJPEG stream (endless)
+    PY->>PY: Buffer & decode frames
+    PY->>PY: Face / QR / motion analysis
+    PY->>PY: Recording & snapshots
+
+    PY->>ESP: POST /res?val=UXGA
+    ESP->>CAM: set_framesize()
+    ESP-->>PY: {"success":true}
+
+    PY->>ESP: GET /led?state=on
+    ESP->>ESP: digitalWrite(LED, HIGH)
+    ESP-->>PY: {"success":true}
+
+    PY->>ESP: GET /telemetry
+    ESP-->>PY: {"heap":...,"uptime":...,"rssi":...}
+
+    DASH->>ESP: GET /dashboard
+    ESP-->>DASH: HTML+JS dashboard
+    DASH->>ESP: AJAX /telemetry (every 3s)
+    DASH->>ESP: AJAX /snapshot
+    DASH->>ESP: AJAX /led?state=on
 ```
 
 **Why a custom viewer?**  
@@ -221,6 +294,20 @@ OpenCV’s `VideoCapture` relies on a tight internal timeout. Even small WiFi de
 2. Buffers them manually.
 3. Decodes only complete JPEG frames.
 4. Displays them without ever hitting a fatal timeout.
+
+## HTTP API Endpoints
+
+The ESP32 exposes these REST endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | MJPEG stream |
+| `/snapshot` | GET | Single JPEG frame |
+| `/res?val=SVGA|UXGA` | GET | Change camera resolution |
+| `/led?state=on|off` | GET | Toggle built-in LED |
+| `/flash?count=N` | GET | Flash LED N times (1-20) |
+| `/telemetry` | GET | JSON: heap, uptime, RSSI, resolution, PSRAM, temperature |
+| `/dashboard` | GET | Full web dashboard |
 
 ## Troubleshooting
 
@@ -232,25 +319,33 @@ OpenCV’s `VideoCapture` relies on a tight internal timeout. Even small WiFi de
 | `Stream Ready` never appears | WiFi credentials wrong | Verify SSID and password; use 2.4 GHz network |
 | Python viewer crashes with timeout | Using standard `VideoCapture` | Always use the provided `raw_view.py` |
 | `QFontDatabase: Cannot find font directory` | Missing desktop fonts (Linux) | Harmless warning – video window still opens |
+| OTA upload fails | Board not reachable | Ensure the board is on the same network and the IP is correct |
+| Motion detection not working | Lighting changes too subtle | Adjust `motion_threshold` in `raw_view.py` |
+| QR code not detected | Code too small or blurry | Hold QR code closer to the camera |
 
 ## Project Structure
 
 ```
 .
-├── platformio.ini       # Board & PSRAM configuration
-├── config.example.py    # Template — copy to config.py & set IP
-├── config.py            # Your local IP (gitignored)
+├── platformio.ini           # Board & PSRAM configuration
+├── config.example.py        # Template — copy to config.py & set IP
+├── config.py                # Your local IP (gitignored)
+├── raw_view.py              # Feature-rich Python viewer
 ├── src/
-│   ├── main.cpp         # ESP32 firmware (MJPEG server)
-│   ├── config.example.h # Template — copy to config.h & set WiFi
-│   └── config.h         # Your WiFi credentials (gitignored)
-├── raw_view.py          # Custom Python viewer with buffering
-├── include/             # Project header files
-├── lib/                 # Private libraries
-├── recordings/          # Captured video storage
-├── snapshots/           # Captured image storage
-├── test/                # PlatformIO test runner
-└── README.md            # This documentation
+│   ├── config.example.h     # Template — copy to config.h & set WiFi
+│   ├── config.h             # Your WiFi credentials (gitignored)
+│   └── main.cpp             # ESP32 firmware entry point
+├── include/
+│   ├── camera_utils.h       # Camera init, resolution switching
+│   ├── wifi_manager.h       # WiFi connect with auto-reconnect
+│   ├── ota_manager.h        # Over-the-air updates
+│   ├── web_server.h         # HTTP server + all API handlers
+│   └── dashboard_html.h     # Embedded web dashboard HTML
+├── recordings/              # Captured video storage
+├── snapshots/               # Captured image storage
+├── lib/                     # Private libraries
+├── test/                    # PlatformIO test runner
+└── README.md                # This documentation
 ```
 
 <div align="center">

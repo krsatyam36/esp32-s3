@@ -1,67 +1,431 @@
 import cv2
 import urllib.request
+import urllib.error
 import numpy as np
 import time
+import json
+import os
+import threading
+from datetime import datetime
+from dataclasses import dataclass
 from config import ESP32_IP
 
-print(f"Connecting to {ESP32_IP}...")
+BASE_URL = ESP32_IP.rstrip("/")
+SNAPSHOT_DIR = "snapshots"
+RECORDING_DIR = "recordings"
+os.makedirs(SNAPSHOT_DIR, exist_ok=True)
+os.makedirs(RECORDING_DIR, exist_ok=True)
 
-try:
-    stream = urllib.request.urlopen(ESP32_IP, timeout=10)
-except Exception as e:
-    print(f"CRITICAL ERROR: {e}")
-    print("Check if the board is on and the IP is correct.")
-    exit()
 
-print("Connected! Buffer filling...")
-bytes_data = b''
+# ============================================================
+#  ESP32 HTTP CLIENT
+# ============================================================
 
-# Initialize variables for FPS calculation
-prev_time = 0
-fps_avg = 0
+class ESP32Client:
+    def __init__(self, base_url: str):
+        self.base_url = base_url
 
-while True:
-    try:
-        # Read 4KB of data at a time
-        bytes_data += stream.read(4096)
-        
-        # Look for JPEG Start (0xff 0xd8) and End (0xff 0xd9) markers
-        a = bytes_data.find(b'\xff\xd8')
-        b = bytes_data.find(b'\xff\xd9')
+    def send_command(self, endpoint: str) -> dict:
+        try:
+            resp = urllib.request.urlopen(f"{self.base_url}{endpoint}", timeout=5)
+            return json.loads(resp.read().decode())
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
-        if a != -1 and b != -1:
-            # Extract the raw JPEG image bytes
-            jpg = bytes_data[a:b+2]
-            # Remove those bytes from the buffer
-            bytes_data = bytes_data[b+2:]
-            
-            # Decode to image matrix
+    def toggle_led(self, state: str):
+        return self.send_command(f"/led?state={state}")
+
+    def flash_led(self, count: int = 5):
+        return self.send_command(f"/flash?count={count}")
+
+    def set_resolution(self, val: str):
+        return self.send_command(f"/res?val={val}")
+
+    def get_telemetry(self) -> dict:
+        return self.send_command("/telemetry")
+
+    def get_snapshot(self) -> bytes | None:
+        try:
+            resp = urllib.request.urlopen(f"{self.base_url}/snapshot", timeout=5)
+            return resp.read()
+        except Exception:
+            return None
+
+    def get_stream(self):
+        return urllib.request.urlopen(self.base_url + "/", timeout=10)
+
+
+# ============================================================
+#  STREAM BUFFER
+# ============================================================
+
+class StreamBuffer:
+    def __init__(self):
+        self.buffer = b""
+
+    def feed(self, data: bytes):
+        self.buffer += data
+
+    def get_frame(self) -> np.ndarray | None:
+        a = self.buffer.find(b"\xff\xd8")
+        b = self.buffer.find(b"\xff\xd9")
+        if a != -1 and b != -1 and b > a:
+            jpg = self.buffer[a : b + 2]
+            self.buffer = self.buffer[b + 2 :]
             img = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-            
-            if img is not None:
-                # --- CALCULATE FPS ---
-                curr_time = time.time()
-                # Prevent division by zero
-                time_diff = curr_time - prev_time if (curr_time - prev_time) > 0 else 0.001
-                
-                fps = 1.0 / time_diff
-                prev_time = curr_time
-                
-                # Smooth the FPS using a simple moving average for readability
-                fps_avg = (fps_avg * 0.9) + (fps * 0.1)
+            return img
+        return None
 
-                # Draw the FPS counter on the image
-                cv2.putText(img, f"FPS: {fps_avg:.1f}", (10, 30), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                
-                cv2.imshow('Live ESP32 Feed', img)
-            
-            # Press 'q' to quit
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+
+# ============================================================
+#  FRAME ANALYZER (face, QR, motion)
+# ============================================================
+
+class FrameAnalyzer:
+    def __init__(self):
+        self.face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+        self.qr_detector = cv2.QRCodeDetector()
+        self.prev_gray = None
+        self.motion_threshold = 5000
+
+    def detect_faces(self, frame: np.ndarray) -> list:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
+        return faces
+
+    def read_qr(self, frame: np.ndarray) -> str | None:
+        data, points, _ = self.qr_detector.detectAndDecode(frame)
+        if data:
+            return data
+        return None
+
+    def detect_motion(self, frame: np.ndarray) -> tuple[bool, np.ndarray | None]:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (21, 21), 0)
+        if self.prev_gray is None:
+            self.prev_gray = gray
+            return False, None
+
+        delta = cv2.absdiff(self.prev_gray, gray)
+        thresh = cv2.threshold(delta, 25, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.dilate(thresh, None, iterations=2)
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        self.prev_gray = gray
+
+        motion = False
+        for c in contours:
+            if cv2.contourArea(c) > self.motion_threshold:
+                motion = True
                 break
-                
-    except Exception as e:
-        print(f"Stream error: {e}")
-        break
+        return motion, thresh if motion else None
 
-cv2.destroyAllWindows()
+    def draw_face_boxes(self, frame: np.ndarray, faces: list):
+        for (x, y, w, h) in faces:
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.putText(frame, "Face", (x, y - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+    def draw_motion_contours(self, frame: np.ndarray, thresh: np.ndarray):
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in contours:
+            if cv2.contourArea(c) > self.motion_threshold:
+                x, y, w, h = cv2.boundingRect(c)
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+
+# ============================================================
+#  RECORDER
+# ============================================================
+
+class Recorder:
+    def __init__(self, output_dir: str):
+        self.output_dir = output_dir
+        self.recording = False
+        self.writer = None
+        self.filename = None
+
+    def start(self, frame: np.ndarray):
+        if self.recording:
+            return
+        self.filename = os.path.join(
+            self.output_dir,
+            f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi",
+        )
+        h, w = frame.shape[:2]
+        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        self.writer = cv2.VideoWriter(self.filename, fourcc, 20.0, (w, h))
+        self.recording = True
+        print(f"Recording started: {self.filename}")
+
+    def write_frame(self, frame: np.ndarray):
+        if self.recording and self.writer:
+            self.writer.write(frame)
+
+    def stop(self):
+        if self.writer:
+            self.writer.release()
+            self.writer = None
+        self.recording = False
+        if self.filename:
+            print(f"Recording saved: {self.filename}")
+        self.filename = None
+
+
+# ============================================================
+#  FPS COUNTER
+# ============================================================
+
+class FPSCounter:
+    def __init__(self):
+        self.prev_time = 0
+        self.smooth_fps = 0
+
+    def update(self) -> float:
+        now = time.time()
+        dt = now - self.prev_time if self.prev_time > 0 else 0.001
+        fps = 1.0 / dt
+        self.prev_time = now
+        self.smooth_fps = (self.smooth_fps * 0.9) + (fps * 0.1)
+        return self.smooth_fps
+
+
+# ============================================================
+#  TELEMETRY DISPLAY
+# ============================================================
+
+class TelemetryOverlay:
+    def __init__(self, client: ESP32Client):
+        self.client = client
+        self.data: dict = {}
+        self.last_fetch = 0
+
+    def update(self):
+        now = time.time()
+        if now - self.last_fetch < 2:
+            return
+        self.last_fetch = now
+        try:
+            self.data = self.client.get_telemetry()
+        except Exception:
+            pass
+
+    def draw(self, frame: np.ndarray):
+        if not self.data:
+            return
+        lines = [
+            f"HEAP: {self.data.get('heap', '--')}",
+            f"Up: {self.data.get('uptime', '--')}s",
+            f"RSSI: {self.data.get('rssi', '--')} dBm",
+            f"Res: {self.data.get('resolution', '--')}",
+            f"PSRAM: {self.data.get('free_psram', '--')}",
+            f"Temp: {self.data.get('temperature', '--')} C",
+        ]
+        y = 60
+        for line in lines:
+            cv2.putText(frame, line, (10, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1)
+            y += 18
+
+
+# ============================================================
+#  MAIN VIEWER
+# ============================================================
+
+class Viewer:
+    def __init__(self):
+        self.client = ESP32Client(BASE_URL)
+        self.buffer = StreamBuffer()
+        self.analyzer = FrameAnalyzer()
+        self.recorder = Recorder(RECORDING_DIR)
+        self.fps = FPSCounter()
+        self.telemetry = TelemetryOverlay(self.client)
+
+        self.enable_face = False
+        self.enable_qr = False
+        self.enable_motion = False
+        self.show_telemetry = False
+        self.led_on = False
+
+        self.running = True
+
+    def draw_status_bar(self, frame: np.ndarray):
+        parts = []
+        parts.append(f"FPS: {self.fps.smooth_fps:.1f}")
+        if self.recorder.recording:
+            parts.append("REC")
+        if self.enable_face:
+            parts.append("FACE")
+        if self.enable_qr:
+            parts.append("QR")
+        if self.enable_motion:
+            parts.append("MOTION")
+        if self.show_telemetry:
+            parts.append("TELE")
+
+        bar = " | ".join(parts)
+        cv2.putText(frame, bar, (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+    def handle_keys(self, key: int):
+        if key == ord("q"):
+            self.running = False
+
+        elif key == ord("s"):
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            path = os.path.join(SNAPSHOT_DIR, f"snapshot_{ts}.jpg")
+            ret = self.client.get_snapshot()
+            if ret:
+                with open(path, "wb") as f:
+                    f.write(ret)
+                print(f"Snapshot saved: {path}")
+            else:
+                print("Snapshot failed")
+
+        elif key == ord("r"):
+            if self.recorder.recording:
+                self.recorder.stop()
+            else:
+                print("Press 'r' again to start recording after frame arrives")
+
+        elif key == ord("1"):
+            res = self.client.set_resolution("SVGA")
+            print(f"Resolution -> SVGA: {res.get('success', False)}")
+
+        elif key == ord("2"):
+            res = self.client.set_resolution("UXGA")
+            print(f"Resolution -> UXGA: {res.get('success', False)}")
+
+        elif key == ord("f"):
+            self.enable_face = not self.enable_face
+            print(f"Face detection: {self.enable_face}")
+
+        elif key == ord("z"):
+            self.enable_qr = not self.enable_qr
+            print(f"QR detection: {self.enable_qr}")
+
+        elif key == ord("m"):
+            self.enable_motion = not self.enable_motion
+            print(f"Motion detection: {self.enable_motion}")
+
+        elif key == ord("t"):
+            self.show_telemetry = not self.show_telemetry
+            print(f"Telemetry overlay: {self.show_telemetry}")
+
+        elif key == ord("l"):
+            self.led_on = not self.led_on
+            state = "on" if self.led_on else "off"
+            res = self.client.toggle_led(state)
+            print(f"LED {state}: {res.get('success', False)}")
+
+        elif key == ord("L"):
+            res = self.client.flash_led(5)
+            print(f"LED flash: {res.get('success', False)}")
+
+    def run(self):
+        print(f"Connecting to {BASE_URL}...")
+        try:
+            stream = self.client.get_stream()
+        except Exception as e:
+            print(f"CRITICAL ERROR: {e}")
+            print("Check if the board is on and the IP is correct.")
+            return
+
+        print("Connected! Press 'h' for help.\n")
+
+        stream_recording = False
+
+        while self.running:
+            try:
+                data = stream.read(4096)
+                if not data:
+                    print("Stream ended, reconnecting...")
+                    stream = self.client.get_stream()
+                    continue
+
+                self.buffer.feed(data)
+                frame = self.buffer.get_frame()
+                if frame is None:
+                    continue
+
+                fps_val = self.fps.update()
+
+                if self.enable_face and fps_val > 0:
+                    faces = self.analyzer.detect_faces(frame)
+                    self.analyzer.draw_face_boxes(frame, faces)
+
+                if self.enable_qr:
+                    qr_data = self.analyzer.read_qr(frame)
+                    if qr_data:
+                        cv2.putText(frame, f"QR: {qr_data}", (10, frame.shape[0] - 20),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+
+                if self.enable_motion:
+                    motion, thresh = self.analyzer.detect_motion(frame)
+                    if motion:
+                        self.analyzer.draw_motion_contours(frame, thresh or np.zeros_like(frame))
+                        cv2.putText(frame, "MOTION", (frame.shape[1] - 120, 30),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+                if self.show_telemetry:
+                    self.telemetry.update()
+                    self.telemetry.draw(frame)
+
+                self.draw_status_bar(frame)
+
+                if not stream_recording and self.recorder.recording:
+                    self.recorder.start(frame)
+                    stream_recording = True
+                elif stream_recording and self.recorder.recording:
+                    self.recorder.write_frame(frame)
+                elif stream_recording and not self.recorder.recording:
+                    stream_recording = False
+
+                cv2.imshow("ESP32-S3 Camera Viewer", frame)
+                key = cv2.waitKey(1) & 0xFF
+                self.handle_keys(key)
+
+            except urllib.error.URLError:
+                print("Connection lost, reconnecting...")
+                try:
+                    stream = self.client.get_stream()
+                except Exception:
+                    time.sleep(2)
+            except Exception as e:
+                print(f"Stream error: {e}")
+                break
+
+        self.recorder.stop()
+        cv2.destroyAllWindows()
+        print("Viewer closed.")
+
+
+# ============================================================
+#  HELP
+# ============================================================
+
+def print_help():
+    print("""
+=== ESP32-S3 Camera Viewer Controls ===
+  q    - Quit
+  s    - Save snapshot
+  r    - Toggle recording
+  1    - Resolution: SVGA (800x600)
+  2    - Resolution: UXGA (1600x1200)
+  f    - Toggle face detection
+  z    - Toggle QR code reader
+  m    - Toggle motion detection
+  t    - Toggle telemetry overlay
+  l    - Toggle LED on/off
+  L    - Flash LED (shift+L)
+  h    - Show this help
+  Dashboard: {BASE_URL}/dashboard
+=========================================
+""")
+
+
+if __name__ == "__main__":
+    print_help()
+    viewer = Viewer()
+    viewer.run()
