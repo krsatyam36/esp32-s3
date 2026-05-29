@@ -31,7 +31,6 @@
   - [5. Get the IP Address](#5-get-the-ip-address)
   - [6. Run the Python Viewer](#6-run-the-python-viewer)
 - [How It Works](#how-it-works)
-- [Pushing to GitHub](#pushing-to-github)
 - [Troubleshooting](#troubleshooting)
 - [Project Structure](#project-structure)
 
@@ -187,8 +186,32 @@ python raw_view.py
 
 ## How It Works
 
+```mermaid
+flowchart LR
+    A[ESP32 Camera] --> B[Capture Frame]
+    B --> C[MJPEG HTTP Server]
+    C -->|WiFi| D[Python Viewer]
+    D --> E[Raw JPEG Buffer]
+    E --> F[Decode Frame]
+    F --> G[OpenCV Display]
 ```
-ESP32 Camera → captures frame → MJPEG HTTP stream (WiFi) → Python viewer (raw JPEG buffer) → OpenCV display
+
+```mermaid
+sequenceDiagram
+    participant ESP32 as ESP32-S3
+    participant WiFi as WiFi Network
+    participant Viewer as raw_view.py
+
+    ESP32->>ESP32: Init camera & start HTTP server
+    ESP32->>WiFi: Stream Ready at http://IP
+    Viewer->>WiFi: HTTP GET /
+    WiFi->>Viewer: MJPEG stream (boundary-separated JPEGs)
+    loop Every frame
+        Viewer->>Viewer: Read raw bytes into buffer
+        Viewer->>Viewer: Find JPEG markers 0xFFD8…0xFFD9
+        Viewer->>Viewer: Decode & display with FPS overlay
+    end
+    Viewer->>Viewer: Press 'q' to quit
 ```
 
 **Why a custom viewer?**  
@@ -198,19 +221,6 @@ OpenCV’s `VideoCapture` relies on a tight internal timeout. Even small WiFi de
 2. Buffers them manually.
 3. Decodes only complete JPEG frames.
 4. Displays them without ever hitting a fatal timeout.
-
-## Pushing to GitHub
-
-Use these commands to push the project to the `main` branch on your repository:
-
-```bash
-git remote add origin https://github.com/krsatyam36/esp32-s3.git
-git add .
-git commit -m "Update README and project files"
-git push -u origin main
-```
-
-When prompted for a password, use your **GitHub Personal Access Token** (not your GitHub account password).
 
 ## Troubleshooting
 
