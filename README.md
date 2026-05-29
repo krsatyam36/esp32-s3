@@ -120,14 +120,20 @@ build_flags =
 
 ### 4. Configure WiFi and Upload Firmware
 
-Open `src/main.cpp` and find the WiFi section.
+Copy the config template and set your WiFi credentials:
 
-Replace the credentials with your own:
+```bash
+cp src/config.example.h src/config.h
+```
+
+Edit `src/config.h` with your network details:
 
 ```cpp
-const char* ssid = "YOUR_WIFI_SSID"; 
-const char* password = "YOUR_WIFI_PASSWORD"; 
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
 ```
+
+> `src/config.h` is in `.gitignore` — your credentials will never be committed.
 
 Connect the ESP32S3 to your computer using a data‑capable USB‑C cable.
 
@@ -159,9 +165,17 @@ Copy that IP address and press `Ctrl+C` to exit the monitor.
 
 We use `raw_view.py` instead of OpenCV’s default `VideoCapture` because the built‑in network handler often crashes with “Timeout” errors when the WiFi latency fluctuates. Our script manually buffers raw JPEG bytes, completely avoiding that problem.
 
-Open `raw_view.py` in a text editor.
+Set the IP address in the local config file (not tracked by git):
 
-Paste the IP address you copied into the `URL` variable.
+```bash
+cp config.example.py config.py
+```
+
+Edit `config.py` and paste the IP address you copied:
+
+```python
+ESP32_IP = "http://192.168.1.X/"
+```
 
 Run the viewer:
 
@@ -214,8 +228,12 @@ When prompted for a password, use your **GitHub Personal Access Token** (not you
 ```
 .
 ├── platformio.ini       # Board & PSRAM configuration
+├── config.example.py    # Template — copy to config.py & set IP
+├── config.py            # Your local IP (gitignored)
 ├── src/
-│   └── main.cpp         # ESP32 firmware (MJPEG server)
+│   ├── main.cpp         # ESP32 firmware (MJPEG server)
+│   ├── config.example.h # Template — copy to config.h & set WiFi
+│   └── config.h         # Your WiFi credentials (gitignored)
 ├── raw_view.py          # Custom Python viewer with buffering
 ├── include/             # Project header files
 ├── lib/                 # Private libraries

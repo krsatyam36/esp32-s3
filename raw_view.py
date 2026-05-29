@@ -2,16 +2,12 @@ import cv2
 import urllib.request
 import numpy as np
 import time
+from config import ESP32_IP
 
-# ====== YOUR IP ADDRESS ======
-URL = "http://10.167.25.130/" 
-# =============================
-
-print(f"Connecting to {URL}...")
+print(f"Connecting to {ESP32_IP}...")
 
 try:
-    # Open the stream
-    stream = urllib.request.urlopen(URL, timeout=10)
+    stream = urllib.request.urlopen(ESP32_IP, timeout=10)
 except Exception as e:
     print(f"CRITICAL ERROR: {e}")
     print("Check if the board is on and the IP is correct.")

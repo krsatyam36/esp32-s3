@@ -3,15 +3,10 @@
 #include "img_converters.h"
 #include "Arduino.h"
 #include "fb_gfx.h"
-#include "soc/soc.h" // Disable brownout problems
+#include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 #include "esp_http_server.h"
-
-// ===================
-// WIFI CREDENTIALS
-// ===================
-const char* ssid = "1";         // <--- CHANGE THIS
-const char* password = "ThereisHope"; // <--- CHANGE THIS
+#include "config.h"
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 

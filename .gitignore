@@ -6,3 +6,7 @@
 *.hex
 node_modules
 .DS_Store
+
+# Local config files with secrets
+config.py
+src/config.h
