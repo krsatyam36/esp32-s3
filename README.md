@@ -8,7 +8,7 @@
 [![ESP32](https://img.shields.io/badge/ESP32-S3-E7352C?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com)
 [![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8?style=flat&logo=opencv&logoColor=white)](https://opencv.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Arduino](https://img.shields.io/badge/Arduino-Framework-00979D?style=flat&logo=arduino&logoColor=white)](https://www.arduino.cc)
 
 **Firmware and Python viewer for low‑latency MJPEG streaming from the Seeed XIAO ESP32S3 Sense, with custom buffering that avoids OpenCV timeouts.**
@@ -187,15 +187,13 @@ OpenCV’s `VideoCapture` relies on a tight internal timeout. Even small WiFi de
 
 ## Pushing to GitHub
 
-If you cloned or created this project inside a folder called `test-run-1`, use these exact commands to push it to the `initial-test1` branch on your repository:
+Use these commands to push the project to the `main` branch on your repository:
 
 ```bash
-git init
-git checkout -b initial-test1
 git remote add origin https://github.com/krsatyam36/esp32-s3.git
 git add .
-git commit -m "Initial setup: PlatformIO config, camera firmware, and raw Python viewer"
-git push -u origin initial-test1
+git commit -m "Update README and project files"
+git push -u origin main
 ```
 
 When prompted for a password, use your **GitHub Personal Access Token** (not your GitHub account password).
@@ -219,7 +217,11 @@ When prompted for a password, use your **GitHub Personal Access Token** (not you
 ├── src/
 │   └── main.cpp         # ESP32 firmware (MJPEG server)
 ├── raw_view.py          # Custom Python viewer with buffering
-├── LICENSE
+├── include/             # Project header files
+├── lib/                 # Private libraries
+├── recordings/          # Captured video storage
+├── snapshots/           # Captured image storage
+├── test/                # PlatformIO test runner
 └── README.md            # This documentation
 ```
 
