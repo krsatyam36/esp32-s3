@@ -30,6 +30,9 @@
 - [Running the Stream](#running-the-stream)
   - [5. Get the IP Address](#5-get-the-ip-address)
   - [6. Run the Python Viewer](#6-run-the-python-viewer)
+  - [7. Use the Web Dashboard](#7-optional-use-the-web-dashboard)
+  - [8. OTA Firmware Updates](#8-optional-ota-firmware-updates)
+  - [9. Vision LLM](#9-vision-llm)
 - [How It Works](#how-it-works)
 - [Troubleshooting](#troubleshooting)
 - [Project Structure](#project-structure)
@@ -60,6 +63,7 @@ All steps are covered, from installing Python tools to uploading firmware to the
 - 🌐 **Web dashboard** — full control UI at `http://IP/dashboard`
 - 📡 **OTA updates** — upload firmware over WiFi via ArduinoOTA
 - 🔁 **Auto WiFi reconnect** — handles disconnects gracefully
+- 🤖 **Vision LLM integration** — stream frames to local Ollama vision models (llama3.2-vision, gemma3, qwen2.5vl) for real-time AI description via `vision_llm.py`
 
 ## System Prerequisites
 
@@ -226,6 +230,29 @@ pio run -t upload --upload-port IP
 
 The board identifies itself as `xiao-esp32s3-cam` on the network.
 
+### 9. Vision LLM
+
+Stream the live camera feed to a local Ollama vision model for real-time AI descriptions. This is a separate tool that does not interfere with `raw_view.py`.
+
+```bash
+python vision_llm.py
+```
+
+You will be prompted to select a model and analysis interval. The video window shows:
+- The live feed with the model's description overlaid
+- Auto-analysis at your chosen interval (or press `n` for manual)
+- Toggle auto mode with `a`
+
+**Prerequisites:** [Ollama](https://ollama.ai) running locally with at least one vision model pulled.
+
+**Controls:**
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `a` | Toggle auto-analysis on/off |
+| `n` | Analyze current frame now |
+
 ## How It Works
 
 ```mermaid
@@ -287,6 +314,20 @@ sequenceDiagram
     DASH->>ESP: AJAX /led?state=on
 ```
 
+```mermaid
+flowchart LR
+    subgraph ESP32["ESP32-S3"]
+        CAM[Camera] --> MJPEG[MJPEG Stream]
+    end
+
+    subgraph LOCAL["Your Machine"]
+        VL[vision_llm.py] -->|HTTP GET /| MJPEG
+        VL -->|base64 frame| OLLAMA[Ollama API :11434]
+        OLLAMA -->|JSON response| VL
+        VL --> DISPLAY[OpenCV Window + LLM Text]
+    end
+```
+
 **Why a custom viewer?**  
 OpenCV’s `VideoCapture` relies on a tight internal timeout. Even small WiFi delays can cause it to throw an error and stop. Our approach:
 
@@ -322,6 +363,8 @@ The ESP32 exposes these REST endpoints:
 | OTA upload fails | Board not reachable | Ensure the board is on the same network and the IP is correct |
 | Motion detection not working | Lighting changes too subtle | Adjust `motion_threshold` in `raw_view.py` |
 | QR code not detected | Code too small or blurry | Hold QR code closer to the camera |
+| `vision_llm.py` cannot connect to Ollama | Ollama not running | Run `ollama serve` and verify with `ollama list` |
+| Vision model slow | Large model on CPU | Use a smaller model like `llava:7b` or `minicpm-v`; increase analysis interval |
 
 ## Project Structure
 
@@ -331,6 +374,7 @@ The ESP32 exposes these REST endpoints:
 ├── config.example.py        # Template — copy to config.py & set IP
 ├── config.py                # Your local IP (gitignored)
 ├── raw_view.py              # Feature-rich Python viewer
+├── vision_llm.py            # Live feed → Ollama vision LLM
 ├── src/
 │   ├── config.example.h     # Template — copy to config.h & set WiFi
 │   ├── config.h             # Your WiFi credentials (gitignored)
