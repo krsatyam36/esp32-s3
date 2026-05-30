@@ -64,6 +64,12 @@ All steps are covered, from installing Python tools to uploading firmware to the
 - 📡 **OTA updates** — upload firmware over WiFi via ArduinoOTA
 - 🔁 **Auto WiFi reconnect** — handles disconnects gracefully
 - 🤖 **Vision LLM integration** — stream frames to local Ollama vision models (llama3.2-vision, gemma3, qwen2.5vl) for real-time AI description via `vision_llm.py`
+- 🎨 **Modern HUD overlay** — drop shadows, translucent dark panels, and feature badges make all text readable against any background
+- 🔄 **Stream rotation** — rotate the view 90°/180°/270° with `o` (desktop) or buttons/shortcuts (web dashboard)
+- ✚ **Rule-of-thirds grid** — composition aid toggle with `g`
+- 🎯 **Center crosshair** — alignment guide toggle with `c`
+- ⏱ **Recording timer** — live `MM:SS` counter with red indicator during recording
+- 🖥 **Fullscreen mode** — `f` key on the web dashboard
 
 ## System Prerequisites
 
@@ -204,6 +210,9 @@ python raw_view.py
 | `z` | Toggle QR code reader |
 | `m` | Toggle motion detection |
 | `t` | Toggle telemetry overlay |
+| `o` | Rotate stream 90° CW (cycles 0→90→180→270→0) |
+| `g` | Toggle rule-of-thirds grid overlay |
+| `c` | Toggle center crosshair |
 | `l` | Toggle built-in LED |
 | `L` | Flash LED 5 times |
 | `h` | Show help |
@@ -218,7 +227,18 @@ Open a browser and navigate to:
 http://IP/dashboard
 ```
 
-The dashboard provides the same controls through a web UI: view the live stream, change resolution, toggle the LED, take snapshots, and monitor telemetry in real time.
+The dashboard provides the same controls through a polished web UI: view the live stream, change resolution, toggle the LED, take snapshots, rotate the stream, toggle fullscreen, and monitor telemetry in real time.
+
+**Web Dashboard keyboard shortcuts:**
+
+| Key | Action |
+|-----|--------|
+| `f` | Toggle fullscreen |
+| `r` | Rotate stream right |
+| `R` | Rotate stream left |
+| `0` | Reset rotation |
+| `s` | Take snapshot |
+| `Esc` | Exit fullscreen |
 
 ### 8. (Optional) OTA Firmware Updates
 
@@ -239,9 +259,9 @@ python vision_llm.py
 ```
 
 You will be prompted to select a model and analysis interval. The video window shows:
-- The live feed with the model's description overlaid
+- The live feed with the model's description overlaid on a dark info panel
 - Auto-analysis at your chosen interval (or press `n` for manual)
-- Toggle auto mode with `a`
+- All text rendered with drop shadows for readability
 
 **Prerequisites:** [Ollama](https://ollama.ai) running locally with at least one vision model pulled.
 
@@ -252,6 +272,9 @@ You will be prompted to select a model and analysis interval. The video window s
 | `q` | Quit |
 | `a` | Toggle auto-analysis on/off |
 | `n` | Analyze current frame now |
+| `o` | Rotate stream 90° CW |
+| `g` | Toggle rule-of-thirds grid overlay |
+| `h` | Show controls in terminal |
 
 ## How It Works
 
