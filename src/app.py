@@ -821,7 +821,7 @@ async def health():
 
 @app.get("/")
 async def index():
-    with open("index.html", "r") as f:
+    with open("src/index.html", "r") as f:
         return HTMLResponse(f.read(), headers={"Cache-Control": "no-cache"})
 
 
@@ -832,4 +832,4 @@ async def index():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", "8000"))
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=False, log_level="info")
