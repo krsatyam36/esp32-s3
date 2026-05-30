@@ -526,7 +526,7 @@ class Viewer:
             if self.enable_motion:
                 motion, thresh = self.analyzer.detect_motion(frame)
                 if motion:
-                    self.analyzer.draw_motion_contours(frame, thresh or np.zeros_like(frame))
+                    self.analyzer.draw_motion_contours(frame, thresh if thresh is not None else np.zeros_like(frame))
                     ModernHUD.text_with_bg(frame, "MOTION DETECTED!", frame.shape[1] - 170, 28,
                                            (0, 0, 255), 0.6, 2)
 
