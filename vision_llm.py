@@ -247,27 +247,27 @@ def main():
             cv2.rectangle(overlay, (0, 0), (frame.shape[1], panel_h), (0, 0, 0), -1)
             frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
 
-            draw_text(frame, f"Model: {model}", (10, 22), (0, 255, 0), 0.55, 2)
+            draw_text(frame, f"Model: {model}", 10, 22, (0, 255, 0), 0.55, 2)
             draw_text(frame,
                       f"FPS: {fps:.1f} | Auto: {'ON' if auto_analyze else 'OFF'} | "
                       f"Interval: {analysis_interval}s | Next: {max(0, analysis_interval - (now - last_analysis)):.0f}s",
-                      (10, 46), (255, 255, 0), 0.5, 1)
+                      10, 46, (255, 255, 0), 0.5, 1)
 
             status = "Processing..." if ollama.processing else "Ready"
-            draw_text(frame, f"LLM: {status}", (10, 68), (255, 255, 0), 0.5, 1)
+            draw_text(frame, f"LLM: {status}", 10, 68, (255, 255, 0), 0.5, 1)
 
             if rotation_angle:
-                draw_text(frame, f"Rot: {rotation_angle}°", (10, 90), (0, 255, 255), 0.5, 1)
+                draw_text(frame, f"Rot: {rotation_angle}°", 10, 90, (0, 255, 255), 0.5, 1)
 
             if analysis_result:
                 y = 115
                 for line in analysis_result.split("\n"):
-                    draw_text(frame, line, (10, y), (255, 255, 255), 0.5, 1)
+                    draw_text(frame, line, 10, y, (255, 255, 255), 0.5, 1)
                     y += 20
                     if y > panel_h - 5:
                         break
             elif analysis_error:
-                draw_text(frame, f"Error: {analysis_error}", (10, 115), (0, 0, 255), 0.5, 1)
+                draw_text(frame, f"Error: {analysis_error}", 10, 115, (0, 0, 255), 0.5, 1)
 
             cv2.imshow("ESP32-S3 Vision LLM", frame)
             key = cv2.waitKey(1) & 0xFF
