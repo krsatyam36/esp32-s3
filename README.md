@@ -329,12 +329,12 @@ flowchart LR
 ```
 
 **Why a custom viewer?**  
-OpenCV’s `VideoCapture` relies on a tight internal timeout. Even small WiFi delays can cause it to throw an error and stop. Our approach:
+OpenCV’s `VideoCapture` relies on a tight internal timeout and single-threaded execution. Even small WiFi delays can cause it to throw an error or freeze the entire window. Our approach:
 
-1. Fetches raw bytes from the stream.
-2. Buffers them manually.
-3. Decodes only complete JPEG frames.
-4. Displays them without ever hitting a fatal timeout.
+1. **Multi-threaded Capture:** A background thread handles all network I/O, preventing UI freezes.
+2. **Self-Healing Buffer:** Automatically detects and discards corrupted JPEG data to prevent buffer jams.
+3. **Real-time Sync:** Flushes the buffer queue to always display the absolute newest frame.
+4. **Non-blocking Decode:** Only complete JPEG frames are decoded and passed to the main thread for display.
 
 ## HTTP API Endpoints
 
