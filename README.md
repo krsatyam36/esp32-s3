@@ -1,8 +1,8 @@
 <div align="center">
 
-# Seeed XIAO ESP32S3 Sense — Low Latency Streamer
+# Seeed XIAO ESP32S3 Sense — Edge Intelligence Platform
 
-**v1.2.1** — *Robust, low-latency video streaming from ESP32S3 Sense camera over WiFi*
+**v2.0.0** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller*
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1+-F58220?style=flat&logo=platformio&logoColor=white)](https://platformio.org)
 [![ESP32](https://img.shields.io/badge/ESP32-S3-E7352C?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com)
@@ -10,8 +10,10 @@
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8?style=flat&logo=opencv&logoColor=white)](https://opencv.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Arduino](https://img.shields.io/badge/Arduino-Framework-00979D?style=flat&logo=arduino&logoColor=white)](https://www.arduino.cc)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Ollama](https://img.shields.io/badge/Ollama-000?style=flat&logo=ollama&logoColor=white)](https://ollama.ai)
 
-**Firmware and Python viewer for low‑latency MJPEG streaming from the Seeed XIAO ESP32S3 Sense, with custom buffering that avoids OpenCV timeouts.**
+**Firmware and Python suite for low‑latency MJPEG streaming from the Seeed XIAO ESP32S3 Sense, with AI-powered features.**
 
 </div>
 
@@ -33,6 +35,8 @@
   - [7. Use the Web Dashboard](#7-optional-use-the-web-dashboard)
   - [8. OTA Firmware Updates](#8-optional-ota-firmware-updates)
   - [9. Vision LLM](#9-vision-llm)
+  - [10. FastAPI Server (app.py)](#10-fastapi-server-apppy)
+- [Boss Mode](#boss-mode)
 - [How It Works](#how-it-works)
 - [Troubleshooting](#troubleshooting)
 - [Project Structure](#project-structure)
@@ -41,13 +45,13 @@
 
 ## Overview
 
-This repository provides everything you need to turn a blank **Ubuntu** system into a working low‑latency video streaming setup for the **Seeed XIAO ESP32S3 Sense** camera.  
+This repository provides everything you need to turn a blank **Ubuntu** system into a full edge intelligence platform for the **Seeed XIAO ESP32S3 Sense** camera.  
 It includes:
 
-- The **Arduino firmware** (uploaded via PlatformIO) that captures frames and serves an MJPEG stream over WiFi.
-- A **custom Python viewer** (`raw_view.py`) that reliably displays the stream without the timeout errors often seen with OpenCV’s `VideoCapture`.
-
-All steps are covered, from installing Python tools to uploading firmware to the board.
+- **Arduino firmware** (uploaded via PlatformIO) that captures frames and serves an MJPEG stream over WiFi.
+- **FastAPI server** (`app.py`) — web dashboard with Vision LLM, YOLO gatekeeper, semantic search, and adaptive rate control.
+- **Standalone Python viewer** (`raw_view.py`) — feature-rich OpenCV viewer with face/QR/motion detection, recording, and HUD.
+- **Vision LLM CLI** (`vision_llm.py`) — stream frames to local Ollama vision models for real-time AI description.
 
 ## Features
 
@@ -60,16 +64,20 @@ All steps are covered, from installing Python tools to uploading firmware to the
 - 🏃 **Motion detection** — toggle with `m`, highlights movement
 - 💡 **LED control** — toggle with `l`, flash with `L`
 - 📊 **Telemetry overlay** — toggle with `t` (heap, uptime, RSSI, temp, PSRAM)
-- 🌐 **Web dashboard** — full control UI at `http://IP/dashboard`
+- 🌐 **Web dashboard** — full control UI at `http://localhost:8000`
 - 📡 **OTA updates** — upload firmware over WiFi via ArduinoOTA
 - 🔁 **Auto WiFi reconnect** — handles disconnects gracefully
-- 🤖 **Vision LLM integration** — stream frames to local Ollama vision models (llama3.2-vision, gemma3, qwen2.5vl) for real-time AI description via `vision_llm.py`
-- 🎨 **Modern HUD overlay** — drop shadows, translucent dark panels, and feature badges make all text readable against any background
-- 🔄 **Stream rotation** — rotate the view 90°/180°/270° with `o` (desktop) or buttons/shortcuts (web dashboard)
+- 🤖 **Vision LLM** — stream frames to local Ollama vision models (gemma3, llama3.2-vision, qwen2.5vl) for real-time AI description
+- 🎨 **Modern HUD overlay** — drop shadows, translucent dark panels, and feature badges
+- 🔄 **Stream rotation** — rotate the view 90°/180°/270° with `o`
 - ✚ **Rule-of-thirds grid** — composition aid toggle with `g`
 - 🎯 **Center crosshair** — alignment guide toggle with `c`
-- ⏱ **Recording timer** — live `MM:SS` counter with red indicator during recording
+- ⏱ **Recording timer** — live `MM:SS` counter with red indicator
 - 🖥 **Fullscreen mode** — `f` key on the web dashboard
+- 🔍 **Semantic search** — natural-language video search via CLIP + ChromaDB
+- 👁 **YOLO event gatekeeper** — real-time object detection triggering LLM analysis
+- ⚡ **Adaptive rate controller** — auto-adjusts resolution & interval based on RSSI/latency
+- ☠️ **Boss Mode** — detects cell phone distraction & roasts you via LLM + TTS
 
 ## System Prerequisites
 
@@ -100,10 +108,16 @@ Your terminal prompt should now begin with `(vir_esp32SENSEenv)`.
 
 ### 2. Install Python Dependencies
 
-With the virtual environment active, install PlatformIO and the libraries needed by the viewer:
+With the virtual environment active, install PlatformIO and the libraries needed by the viewer/server:
 
 ```bash
-pip install platformio opencv-python numpy
+pip install platformio opencv-python numpy fastapi uvicorn requests
+# Optional — for event gatekeeper:
+pip install ultralytics
+# Optional — for semantic search:
+pip install chromadb sentence-transformers torch
+# Required for Boss Mode TTS:
+sudo apt install espeak -y
 ```
 
 ### 3. Hardware Configuration (platformio.ini)
@@ -276,6 +290,62 @@ You will be prompted to select a model and analysis interval. The video window s
 | `g` | Toggle rule-of-thirds grid overlay |
 | `h` | Show controls in terminal |
 
+### 10. FastAPI Server (app.py)
+
+The FastAPI server provides a web dashboard with all AI features:
+
+```bash
+python src/app.py
+```
+
+Open **http://localhost:8000** in your browser.
+
+**Web dashboard features:**
+- Live MJPEG stream with grid overlay & rotation controls
+- AI Vision panel with model selector, analysis interval, and real-time LLM results
+- YOLO event log showing detected objects with confidence and severity
+- Semantic search — search archived frames by natural language
+- Adaptive controller status — shows current mode (normal/throttled/emergency)
+- ESP32 controls — LED, resolution, telemetry, snapshots
+
+**REST API Endpoints:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/stream` | GET | MJPEG video stream |
+| `/analysis` | GET | SSE stream of LLM analysis results |
+| `/analyze-now` | POST | Force immediate LLM analysis |
+| `/model` | POST | Set Ollama model |
+| `/interval` | POST | Set analysis interval |
+| `/events` | GET | YOLO detection events |
+| `/search` | GET/POST | Semantic video search |
+| `/system-status` | GET | Full system status |
+| `/health` | GET | ESP32 + Ollama connectivity |
+| `/telemetry` | GET | ESP32 telemetry proxy |
+| `/led` | POST | Toggle LED |
+| `/res` | POST | Set resolution |
+| `/models` | GET | Available Ollama models |
+
+## Boss Mode
+
+> ☠️ **When YOLO detects a cell phone in the frame for more than 5 seconds, the system roasts you.**
+
+Boss Mode is a self-accountability feature built into `app.py`:
+
+1. **YOLO gatekeeper** (`EventGatekeeper`) continuously tracks cell phone detections.
+2. If a cell phone is in frame for **≥ 5 seconds**, it activates boss mode.
+3. **Ollama** receives the frame with an aggressive system prompt:
+   > *"You are a toxic, passive-aggressive boss. The user in this image is looking at their phone instead of coding. Roast them mercilessly in one short sentence based on what you see."*
+4. The roast appears on the web dashboard as **huge red text** with a shake animation.
+5. **espeak** yells the roast through your laptop speakers.
+
+Boss mode auto-deactivates when the phone leaves the frame, with a 10-second cooldown between roasts.
+
+**Requirements:**
+```bash
+sudo apt install espeak -y
+```
+
 ## How It Works
 
 ```mermaid
@@ -394,25 +464,39 @@ The ESP32 exposes these REST endpoints:
 ```
 .
 ├── platformio.ini           # Board & PSRAM configuration
-├── config.example.py        # Template — copy to config.py & set IP
-├── config.py                # Your local IP (gitignored)
-├── raw_view.py              # Feature-rich Python viewer
-├── vision_llm.py            # Live feed → Ollama vision LLM
-├── src/
-│   ├── config.example.h     # Template — copy to config.h & set WiFi
-│   ├── config.h             # Your WiFi credentials (gitignored)
-│   └── main.cpp             # ESP32 firmware entry point
-├── include/
+├── README.md                # This documentation
+├── __pycache__/             # Python bytecode cache (gitignored)
+├── recordings/              # Captured video storage
+├── snapshots/               # Captured image storage
+├── lib/                     # Private libraries
+├── test/                    # PlatformIO test runner
+├── testing/                 # Manual test documentation
+├── include/                 # C++ firmware headers
 │   ├── camera_utils.h       # Camera init, resolution switching
 │   ├── wifi_manager.h       # WiFi connect with auto-reconnect
 │   ├── ota_manager.h        # Over-the-air updates
 │   ├── web_server.h         # HTTP server + all API handlers
 │   └── dashboard_html.h     # Embedded web dashboard HTML
-├── recordings/              # Captured video storage
-├── snapshots/               # Captured image storage
-├── lib/                     # Private libraries
-├── test/                    # PlatformIO test runner
-└── README.md                # This documentation
+├── src/                     # Python host apps + firmware source
+│   ├── app.py               # FastAPI server (Edge Intelligence Platform)
+│   ├── raw_view.py          # Feature-rich Python viewer
+│   ├── vision_llm.py        # Live feed → Ollama vision LLM
+│   ├── index.html           # Web dashboard frontend
+│   ├── config.py            # Your local IP (gitignored)
+│   ├── config.example.py    # Template — copy to config.py & set IP
+│   ├── config.h             # WiFi credentials (gitignored)
+│   ├── config.example.h     # Template — copy to config.h & set WiFi
+│   └── main.cpp             # ESP32 firmware entry point
+└── esp32-s3/                # Older project version (reference)
+    ├── app.py
+    ├── raw_view.py
+    ├── vision_llm.py
+    ├── index.html
+    ├── platformio.ini
+    ├── include/             # C++ headers (identical to root include/)
+    └── src/                 # Firmware source
+        ├── config.example.h
+        └── main.cpp
 ```
 
 <div align="center">
