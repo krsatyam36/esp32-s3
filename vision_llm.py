@@ -198,6 +198,24 @@ def main():
         "o=Rotate  g=Grid  h=Help"
     )
 
+    def wrap_text(text, max_width, scale=0.5, thick=1):
+        """Word-wrap text to fit within max_width pixels."""
+        words = text.split()
+        lines = []
+        current_line = ""
+        for word in words:
+            test_line = current_line + " " + word if current_line else word
+            (w, _), _ = cv2.getTextSize(test_line, cv2.FONT_HERSHEY_SIMPLEX, scale, thick)
+            if w <= max_width:
+                current_line = test_line
+            else:
+                if current_line:
+                    lines.append(current_line)
+                current_line = word
+        if current_line:
+            lines.append(current_line)
+        return lines if lines else [text]
+
     def draw_text(img, text, x, y, color=(255, 255, 255), scale=0.5, thick=1):
         cv2.putText(img, text, (x + 1, y + 1), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
         cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
@@ -269,7 +287,9 @@ def main():
 
             # ── Bottom analysis panel (dynamic height) ──
             if analysis_result:
-                lines = analysis_result.split("\n")
+                margin = 10
+                max_text_width = frame.shape[1] - 2 * margin
+                lines = wrap_text(analysis_result, max_text_width, scale=0.5, thick=1)
                 line_h = 22
                 pad = 12
                 max_lines = min(len(lines), 8)
@@ -279,11 +299,11 @@ def main():
                 cv2.rectangle(overlay, (0, fh - panel_h), (frame.shape[1], fh), (0, 0, 0), -1)
                 frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
                 for i, line in enumerate(lines[:max_lines]):
-                    draw_text(frame, line, 10, fh - panel_h + pad + i * line_h + 12,
+                    draw_text(frame, line, margin, fh - panel_h + pad + i * line_h + 12,
                               (255, 255, 255), 0.5, 1)
                 if len(lines) > max_lines:
                     draw_text(frame, f"... +{len(lines) - max_lines} more lines",
-                              10, fh - 8, (180, 180, 180), 0.4, 1)
+                              margin, fh - 8, (180, 180, 180), 0.4, 1)
             elif analysis_error:
                 overlay = frame.copy()
                 cv2.rectangle(overlay, (0, frame.shape[0] - 40), (frame.shape[1], frame.shape[0]),
