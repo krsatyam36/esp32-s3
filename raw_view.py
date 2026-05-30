@@ -7,7 +7,6 @@ import json
 import os
 import threading
 from datetime import datetime
-from dataclasses import dataclass
 from config import ESP32_IP
 
 BASE_URL = ESP32_IP.rstrip("/")
@@ -15,7 +14,6 @@ SNAPSHOT_DIR = "snapshots"
 RECORDING_DIR = "recordings"
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 os.makedirs(RECORDING_DIR, exist_ok=True)
-
 
 # ============================================================
 #  ESP32 HTTP CLIENT
@@ -50,13 +48,13 @@ class ESP32Client:
             return resp.read()
         except Exception:
             return None
-
+            
     def get_stream(self):
-        return urllib.request.urlopen(self.base_url + "/", timeout=10)
-
+        # Fail-fast 1.5s timeout prevents the background thread from hanging
+        return urllib.request.urlopen(self.base_url + "/", timeout=1.5)
 
 # ============================================================
-#  STREAM BUFFER
+#  STREAM BUFFER (Self-Healing)
 # ============================================================
 
 class StreamBuffer:
@@ -67,15 +65,22 @@ class StreamBuffer:
         self.buffer += data
 
     def get_frame(self) -> np.ndarray | None:
-        a = self.buffer.find(b"\xff\xd8")
-        b = self.buffer.find(b"\xff\xd9")
-        if a != -1 and b != -1 and b > a:
-            jpg = self.buffer[a : b + 2]
-            self.buffer = self.buffer[b + 2 :]
-            img = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-            return img
+        a = self.buffer.find(b"\xff\xd8") # Start marker
+        b = self.buffer.find(b"\xff\xd9") # End marker
+        
+        if a != -1 and b != -1:
+            if a < b:
+                # Perfect frame found! Extract it.
+                jpg = self.buffer[a : b + 2]
+                self.buffer = self.buffer[b + 2 :]
+                img = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                return img
+            else:
+                # CORRUPTION DETECTED: An 'End' came before a 'Start'.
+                # Delete the corrupted data so the buffer doesn't jam.
+                self.buffer = self.buffer[a:]
+                
         return None
-
 
 # ============================================================
 #  FRAME ANALYZER (face, QR, motion)
@@ -134,7 +139,6 @@ class FrameAnalyzer:
                 x, y, w, h = cv2.boundingRect(c)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
 
-
 # ============================================================
 #  RECORDER
 # ============================================================
@@ -172,7 +176,6 @@ class Recorder:
             print(f"Recording saved: {self.filename}")
         self.filename = None
 
-
 # ============================================================
 #  FPS COUNTER
 # ============================================================
@@ -189,7 +192,6 @@ class FPSCounter:
         self.prev_time = now
         self.smooth_fps = (self.smooth_fps * 0.9) + (fps * 0.1)
         return self.smooth_fps
-
 
 # ============================================================
 #  TELEMETRY DISPLAY
@@ -228,14 +230,19 @@ class TelemetryOverlay:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1)
             y += 18
 
-
 # ============================================================
-#  MAIN VIEWER
+#  MAIN VIEWER (Multi-Threaded & Real-Time Synced)
 # ============================================================
 
 class Viewer:
     def __init__(self):
         self.client = ESP32Client(BASE_URL)
+        
+        # --- NEW: Automatically set SVGA resolution on startup ---
+        print("Setting default camera resolution to SVGA (800x600)...")
+        self.client.set_resolution("SVGA")
+        # ---------------------------------------------------------
+
         self.buffer = StreamBuffer()
         self.analyzer = FrameAnalyzer()
         self.recorder = Recorder(RECORDING_DIR)
@@ -247,31 +254,28 @@ class Viewer:
         self.enable_motion = False
         self.show_telemetry = False
         self.led_on = False
-
         self.running = True
 
+        # Threading synchronization variables
+        self.latest_frame = None
+        self.new_frame_ready = False  
+        self.frame_lock = threading.Lock()
+        self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+
     def draw_status_bar(self, frame: np.ndarray):
-        parts = []
-        parts.append(f"FPS: {self.fps.smooth_fps:.1f}")
-        if self.recorder.recording:
-            parts.append("REC")
-        if self.enable_face:
-            parts.append("FACE")
-        if self.enable_qr:
-            parts.append("QR")
-        if self.enable_motion:
-            parts.append("MOTION")
-        if self.show_telemetry:
-            parts.append("TELE")
+        parts = [f"FPS: {self.fps.smooth_fps:.1f}"]
+        if self.recorder.recording: parts.append("REC")
+        if self.enable_face: parts.append("FACE")
+        if self.enable_qr: parts.append("QR")
+        if self.enable_motion: parts.append("MOTION")
+        if self.show_telemetry: parts.append("TELE")
 
         bar = " | ".join(parts)
-        cv2.putText(frame, bar, (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        cv2.putText(frame, bar, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
     def handle_keys(self, key: int):
         if key == ord("q"):
             self.running = False
-
         elif key == ord("s"):
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             path = os.path.join(SNAPSHOT_DIR, f"snapshot_{ts}.jpg")
@@ -280,127 +284,142 @@ class Viewer:
                 with open(path, "wb") as f:
                     f.write(ret)
                 print(f"Snapshot saved: {path}")
-            else:
-                print("Snapshot failed")
-
         elif key == ord("r"):
             if self.recorder.recording:
                 self.recorder.stop()
             else:
                 print("Press 'r' again to start recording after frame arrives")
-
         elif key == ord("1"):
-            res = self.client.set_resolution("SVGA")
-            print(f"Resolution -> SVGA: {res.get('success', False)}")
-
+            self.client.set_resolution("SVGA")
         elif key == ord("2"):
-            res = self.client.set_resolution("UXGA")
-            print(f"Resolution -> UXGA: {res.get('success', False)}")
-
+            self.client.set_resolution("UXGA")
         elif key == ord("f"):
             self.enable_face = not self.enable_face
-            print(f"Face detection: {self.enable_face}")
-
         elif key == ord("z"):
             self.enable_qr = not self.enable_qr
-            print(f"QR detection: {self.enable_qr}")
-
         elif key == ord("m"):
             self.enable_motion = not self.enable_motion
-            print(f"Motion detection: {self.enable_motion}")
-
         elif key == ord("t"):
             self.show_telemetry = not self.show_telemetry
-            print(f"Telemetry overlay: {self.show_telemetry}")
-
         elif key == ord("l"):
             self.led_on = not self.led_on
-            state = "on" if self.led_on else "off"
-            res = self.client.toggle_led(state)
-            print(f"LED {state}: {res.get('success', False)}")
-
+            self.client.toggle_led("on" if self.led_on else "off")
         elif key == ord("L"):
-            res = self.client.flash_led(5)
-            print(f"LED flash: {res.get('success', False)}")
+            self.client.flash_led(5)
 
-    def run(self):
+    def _capture_loop(self):
+        """Background thread dedicated entirely to network streaming."""
         print(f"Connecting to {BASE_URL}...")
         try:
             stream = self.client.get_stream()
         except Exception as e:
-            print(f"CRITICAL ERROR: {e}")
-            print("Check if the board is on and the IP is correct.")
+            print(f"CRITICAL ERROR: {e}\nCheck if the board is on and the IP is correct.")
+            self.running = False
             return
 
-        print("Connected! Press 'h' for help.\n")
-
-        stream_recording = False
+        print("Connected! Streaming started...\n")
 
         while self.running:
             try:
-                data = stream.read(4096)
+                # 64KB chunks to prevent socket bottlenecks on high-res frames
+                data = stream.read(65536)
                 if not data:
-                    print("Stream ended, reconnecting...")
-                    stream = self.client.get_stream()
+                    time.sleep(0.1)
                     continue
-
+                
                 self.buffer.feed(data)
-                frame = self.buffer.get_frame()
-                if frame is None:
-                    continue
-
-                fps_val = self.fps.update()
-
-                if self.enable_face and fps_val > 0:
-                    faces = self.analyzer.detect_faces(frame)
-                    self.analyzer.draw_face_boxes(frame, faces)
-
-                if self.enable_qr:
-                    qr_data = self.analyzer.read_qr(frame)
-                    if qr_data:
-                        cv2.putText(frame, f"QR: {qr_data}", (10, frame.shape[0] - 20),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
-
-                if self.enable_motion:
-                    motion, thresh = self.analyzer.detect_motion(frame)
-                    if motion:
-                        self.analyzer.draw_motion_contours(frame, thresh or np.zeros_like(frame))
-                        cv2.putText(frame, "MOTION", (frame.shape[1] - 120, 30),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-                if self.show_telemetry:
-                    self.telemetry.update()
-                    self.telemetry.draw(frame)
-
-                self.draw_status_bar(frame)
-
-                if not stream_recording and self.recorder.recording:
-                    self.recorder.start(frame)
-                    stream_recording = True
-                elif stream_recording and self.recorder.recording:
-                    self.recorder.write_frame(frame)
-                elif stream_recording and not self.recorder.recording:
-                    stream_recording = False
-
-                cv2.imshow("ESP32-S3 Camera Viewer", frame)
-                key = cv2.waitKey(1) & 0xFF
-                self.handle_keys(key)
+                
+                # Flush the queue: Keep extracting frames until the buffer is empty. 
+                # We only want to pass the absolute newest one to the UI.
+                while True:
+                    frame = self.buffer.get_frame()
+                    if frame is None:
+                        break 
+                    
+                    with self.frame_lock:
+                        self.latest_frame = frame
+                        self.new_frame_ready = True
 
             except urllib.error.URLError:
                 print("Connection lost, reconnecting...")
                 try:
                     stream = self.client.get_stream()
-                except Exception:
-                    time.sleep(2)
+                except:
+                    time.sleep(1)
             except Exception as e:
-                print(f"Stream error: {e}")
-                break
+                # If ANY error happens (like a timeout), re-initialize the stream
+                print(f"Stream error: {e}. Attempting to reconnect...")
+                try:
+                    stream = self.client.get_stream()
+                except Exception as reconnect_error:
+                    print(f"Reconnect failed: {reconnect_error}")
+                    time.sleep(1)
+
+    def run(self):
+        """Main UI Thread: Handles rendering, AI, and OpenCV events."""
+        self.capture_thread.start()
+        print("UI Thread initialized. Press 'h' for help.\n")
+        
+        stream_recording = False
+
+        while self.running:
+            # ONLY RENDER FRESH FRAMES
+            with self.frame_lock:
+                if self.new_frame_ready and self.latest_frame is not None:
+                    frame = self.latest_frame.copy()
+                    self.new_frame_ready = False 
+                else:
+                    frame = None
+
+            if frame is None:
+                # If no fresh frame, just keep the GUI alive and wait
+                key = cv2.waitKey(10) & 0xFF
+                self.handle_keys(key)
+                continue
+
+            # FPS accurately calculates actual camera frames
+            fps_val = self.fps.update()
+
+            if self.enable_face and fps_val > 0:
+                faces = self.analyzer.detect_faces(frame)
+                self.analyzer.draw_face_boxes(frame, faces)
+
+            if self.enable_qr:
+                qr_data = self.analyzer.read_qr(frame)
+                if qr_data:
+                    cv2.putText(frame, f"QR: {qr_data}", (10, frame.shape[0] - 20),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+
+            if self.enable_motion:
+                motion, thresh = self.analyzer.detect_motion(frame)
+                if motion:
+                    self.analyzer.draw_motion_contours(frame, thresh or np.zeros_like(frame))
+                    cv2.putText(frame, "MOTION", (frame.shape[1] - 120, 30),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+            if self.show_telemetry:
+                self.telemetry.update()
+                self.telemetry.draw(frame)
+
+            self.draw_status_bar(frame)
+
+            if not stream_recording and self.recorder.recording:
+                self.recorder.start(frame)
+                stream_recording = True
+            elif stream_recording and self.recorder.recording:
+                self.recorder.write_frame(frame)
+            elif stream_recording and not self.recorder.recording:
+                stream_recording = False
+
+            cv2.imshow("ESP32-S3 Camera Viewer", frame)
+            
+            key = cv2.waitKey(1) & 0xFF
+            self.handle_keys(key)
 
         self.recorder.stop()
         cv2.destroyAllWindows()
         print("Viewer closed.")
-
-
+        
 # ============================================================
 #  HELP
 # ============================================================
@@ -408,22 +427,21 @@ class Viewer:
 def print_help():
     print("""
 === ESP32-S3 Camera Viewer Controls ===
-  q    - Quit
-  s    - Save snapshot
-  r    - Toggle recording
-  1    - Resolution: SVGA (800x600)
-  2    - Resolution: UXGA (1600x1200)
-  f    - Toggle face detection
-  z    - Toggle QR code reader
-  m    - Toggle motion detection
-  t    - Toggle telemetry overlay
-  l    - Toggle LED on/off
-  L    - Flash LED (shift+L)
-  h    - Show this help
-  Dashboard: {BASE_URL}/dashboard
+ q    - Quit
+ s    - Save snapshot
+ r    - Toggle recording
+ 1    - Resolution: SVGA (800x600)
+ 2    - Resolution: UXGA (1600x1200)
+ f    - Toggle face detection
+ z    - Toggle QR code reader
+ m    - Toggle motion detection
+ t    - Toggle telemetry overlay
+ l    - Toggle LED on/off
+ L    - Flash LED (shift+L)
+ h    - Show this help
+ Dashboard: {BASE_URL}/dashboard
 =========================================
 """)
-
 
 if __name__ == "__main__":
     print_help()
