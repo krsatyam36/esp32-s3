@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32-S3 Camera Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0b1120;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 50%, rgba(168, 85, 247, 0.04) 0%, transparent 50%);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.70);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .stream-wrapper {
+      position: relative;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      aspect-ratio: 4 / 3;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .stream-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      transition: transform 0.35s ease;
+    }
+    .stream-wrapper img.rot-90  { transform: rotate(90deg); }
+    .stream-wrapper img.rot-180 { transform: rotate(180deg); }
+    .stream-wrapper img.rot-270 { transform: rotate(270deg); }
+    .stream-wrapper .grid-overlay {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.25s;
+    }
+    .stream-wrapper .grid-overlay.active { opacity: 0.35; }
+    .stream-wrapper .grid-overlay::before,
+    .stream-wrapper .grid-overlay::after {
+      content: ''; position: absolute; background: rgba(255,255,255,0.5);
+    }
+    .stream-wrapper .grid-overlay::before {
+      top: 33.33%; left: 0; right: 0; height: 1px;
+    }
+    .stream-wrapper .grid-overlay::after {
+      left: 33.33%; top: 0; bottom: 0; width: 1px;
+    }
+    .live-badge {
+      position: absolute; top: 12px; left: 12px; z-index: 10;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px); padding: 6px 14px; border-radius: 8px;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+    }
+    .live-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #22c55e;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%; display: inline-block;
+    }
+    .status-dot.on  { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.4); }
+    .status-dot.off { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.3); }
+    .status-dot.na  { background: #64748b; }
+    .cta {
+      padding: 8px 18px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      transition: all 0.2s ease; cursor: pointer; border: none;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .cta:hover { transform: translateY(-1px); filter: brightness(1.15); }
+    .cta:active { transform: translateY(0); }
+    select, input {
+      padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 500;
+      background: rgba(15, 23, 42, 0.8); color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.08); cursor: pointer; outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus { border-color: rgba(56, 189, 248, 0.5); }
+    .analysis-panel {
+      max-height: 360px; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent;
+    }
+    .analysis-panel::-webkit-scrollbar { width: 4px; }
+    .analysis-panel::-webkit-scrollbar-track { background: transparent; }
+    .analysis-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    .fade-in { animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .typing::after {
+      content: ''; display: inline-block; width: 6px; height: 14px;
+      background: #38bdf8; margin-left: 4px;
+      animation: blink 0.8s step-end infinite; vertical-align: middle;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .btn-group { display: flex; gap: 2px; }
+    .btn-group .cta {
+      border-radius: 0; margin: 0; padding: 6px 12px; font-size: 12px;
+    }
+    .btn-group .cta:first-child { border-radius: 10px 0 0 10px; }
+    .btn-group .cta:last-child  { border-radius: 0 10px 10px 0; }
+    .btn-group .cta.active-rot  { background: #3b82f6; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="max-w-7xl mx-auto px-4 py-5">
+
+  <!-- ── Header ── -->
+  <header class="glass rounded-2xl px-6 py-4 mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2.5">
+        <span class="live-dot"></span>
+        <span class="text-xs font-semibold tracking-widest text-green-400 uppercase">Live</span>
+      </div>
+      <h1 class="text-lg font-bold tracking-tight text-white/90">
+        ESP32-S3 <span class="text-sky-400">Camera Dashboard</span>
+      </h1>
+    </div>
+    <div class="flex items-center gap-3 text-xs">
+      <span class="flex items-center gap-1.5">
+        <span id="healthEsp" class="status-dot na" title="ESP32"></span>
+        <span class="text-slate-500">ESP32</span>
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span id="healthOllama" class="status-dot na" title="Ollama"></span>
+        <span class="text-slate-500">Ollama</span>
+      </span>
+      <span class="w-px h-4 bg-white/10"></span>
+      <span id="fpsDisplay" class="font-mono text-slate-400">0 FPS</span>
+      <span class="w-px h-4 bg-white/10"></span>
+      <span id="resDisplay" class="font-mono text-slate-500">--</span>
+    </div>
+  </header>
+
+  <!-- ── Main Grid ── -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+    <!-- ═══ Left Column: Stream + Controls ═══ -->
+    <div class="xl:col-span-2 space-y-4">
+
+      <!-- Video Feed -->
+      <div class="glass-card rounded-2xl p-3">
+        <div class="stream-wrapper" id="streamWrapper">
+          <img id="videoFeed" src="/stream" alt="Live stream" />
+          <div class="grid-overlay" id="gridOverlay"></div>
+          <div class="live-badge">
+            <span class="live-dot"></span>
+            <span class="text-green-400 text-xs font-semibold tracking-wide">LIVE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Row 1: LED + Resolution + Snapshot -->
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mr-0.5">LED</span>
+          <button class="cta bg-green-600/80 text-white hover:bg-green-500" onclick="setLed('on')">&#9679; ON</button>
+          <button class="cta bg-red-600/60 text-white hover:bg-red-500" onclick="setLed('off')">&#9711; OFF</button>
+          <button class="cta bg-amber-600/60 text-white hover:bg-amber-500" onclick="flashLed()">&#9889; Flash</button>
+
+          <span class="w-px h-7 bg-white/5 mx-2"></span>
+
+          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mr-0.5">Res</span>
+          <select id="resSelect" onchange="changeResolution()">
+            <option value="SVGA">SVGA &middot; 800&times;600</option>
+            <option value="UXGA" selected>UXGA &middot; 1600&times;1200</option>
+          </select>
+
+          <span class="w-px h-7 bg-white/5 mx-2"></span>
+
+          <button class="cta bg-slate-700/60 text-white hover:bg-slate-600" onclick="takeSnapshot()">&#128247; Snapshot</button>
+        </div>
+      </div>
+
+      <!-- Controls Row 2: Rotation + Grid -->
+      <div class="glass-card rounded-2xl p-5">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mr-0.5">Rotate</span>
+          <div class="btn-group" id="rotGroup">
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 active-rot" data-deg="0" onclick="setRotation(0)">0&deg;</button>
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="90" onclick="setRotation(90)">90&deg;</button>
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="180" onclick="setRotation(180)">180&deg;</button>
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="270" onclick="setRotation(270)">270&deg;</button>
+          </div>
+
+          <span class="w-px h-7 bg-white/5 mx-2"></span>
+
+          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 mr-0.5">Grid</span>
+          <button id="gridBtn" class="cta bg-slate-700/50 text-white hover:bg-slate-600" onclick="toggleGrid()">
+            <span>&#9744;</span> Off
+          </button>
+        </div>
+      </div>
+
+      <!-- Telemetry -->
+      <div class="glass-card rounded-2xl p-5">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#128202; Telemetry</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          <div class="bg-black/40 rounded-xl p-3 text-center">
+            <div class="metric-value text-lg font-bold text-sky-400" id="teleHeap">--</div>
+            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Free Heap</div>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 text-center">
+            <div class="metric-value text-lg font-bold text-sky-400" id="teleUptime">--</div>
+            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Uptime (s)</div>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 text-center">
+            <div class="metric-value text-lg font-bold text-sky-400" id="teleRSSI">--</div>
+            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">RSSI</div>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 text-center">
+            <div class="metric-value text-lg font-bold text-sky-400" id="teleRes">--</div>
+            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Resolution</div>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 text-center">
+            <div class="metric-value text-lg font-bold text-sky-400" id="telePSRAM">--</div>
+            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Free PSRAM</div>
+          </div>
+          <div class="bg-black/40 rounded-xl p-3 text-center">
+            <div class="metric-value text-lg font-bold text-sky-400" id="teleTemp">--</div>
+            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Temp (&deg;C)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Right Column: AI Analysis ═══ -->
+    <div class="space-y-4">
+
+      <!-- Model Config -->
+      <div class="glass-card rounded-2xl p-5">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#129302; AI Vision</h2>
+
+        <div class="space-y-3">
+          <div>
+            <label class="text-[11px] text-slate-500 block mb-1.5">Model</label>
+            <select id="modelSelect" class="w-full" onchange="changeModel()"></select>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex-1">
+              <label class="text-[11px] text-slate-500 block mb-1.5">Interval (s)</label>
+              <select id="intervalSelect" class="w-full" onchange="changeInterval()">
+                <option value="2">2s</option>
+                <option value="5" selected>5s</option>
+                <option value="10">10s</option>
+                <option value="15">15s</option>
+                <option value="30">30s</option>
+              </select>
+            </div>
+            <div class="pt-5">
+              <button class="cta bg-sky-600/80 text-white hover:bg-sky-500 whitespace-nowrap" onclick="forceAnalysis()">
+                &#9654; Analyze Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analysis Results -->
+      <div class="glass-card rounded-2xl p-5 flex flex-col flex-1">
+        <div class="flex items-center justify-between mb-4">
+          <span id="analysisStatus" class="text-[10px] font-mono text-slate-500">waiting</span>
+          <span id="analysisModel" class="text-[10px] font-mono text-slate-600">--</span>
+        </div>
+
+        <div id="analysisContent" class="analysis-panel min-h-[200px]">
+          <div class="flex items-center justify-center h-full text-slate-600 text-sm">
+            <span>Waiting for first analysis&hellip;</span>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-600">
+          <span>Next analysis in <span id="countdownDisplay" class="font-mono text-slate-400">--</span>s</span>
+          <button class="text-sky-500 hover:text-sky-400 transition-colors font-medium bg-transparent border-none cursor-pointer text-[11px]" onclick="clearAnalysis()">Clear</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="mt-5 text-center text-[11px] text-slate-700">
+    ESP32-S3 Camera Dashboard &middot; FastAPI + Ollama
+  </footer>
+</div>
+
+<div id="toast" class="fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white hidden z-50 shadow-2xl"></div>
+
+<script>
+// ── Toast ──
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white z-50 shadow-2xl';
+  t.style.display = 'block';
+  t.style.borderLeft = '4px solid ' + (type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6');
+  setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+// ── Streaming FPS ──
+(function() {
+  const img = document.getElementById('videoFeed');
+  let last = performance.now();
+  img.addEventListener('load', () => {
+    const now = performance.now();
+    const fps = Math.round(1000 / (now - last));
+    last = now;
+    document.getElementById('fpsDisplay').textContent = fps + ' FPS';
+  });
+})();
+
+// ── Rotation ──
+function setRotation(deg) {
+  const img = document.getElementById('videoFeed');
+  img.className = deg ? ('rot-' + deg) : '';
+  document.querySelectorAll('#rotGroup .cta').forEach(b => {
+    b.classList.toggle('active-rot', parseInt(b.dataset.deg) === deg);
+  });
+}
+
+// ── Grid Toggle ──
+let gridOn = false;
+function toggleGrid() {
+  gridOn = !gridOn;
+  document.getElementById('gridOverlay').classList.toggle('active', gridOn);
+  const btn = document.getElementById('gridBtn');
+  btn.innerHTML = gridOn ? '<span>&#9746;</span> On' : '<span>&#9744;</span> Off';
+  btn.classList.toggle('bg-sky-600/60', gridOn);
+  btn.classList.toggle('bg-slate-700/50', !gridOn);
+}
+
+// ── LED Controls ──
+async function setLed(state) {
+  try {
+    const r = await fetch('/led', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state }) });
+    const d = await r.json();
+    showToast(d.success ? 'LED ' + state.toUpperCase() : 'LED failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+async function flashLed() {
+  try {
+    const r = await fetch('/flash?count=5', { method: 'POST' });
+    const d = await r.json();
+    showToast(d.success ? 'Flashing 5 times' : 'Flash failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ── Resolution ──
+async function changeResolution() {
+  const val = document.getElementById('resSelect').value;
+  try {
+    const r = await fetch('/res', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: val }) });
+    const d = await r.json();
+    showToast(d.success ? 'Resolution: ' + val : 'Resolution failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ── Snapshot ──
+function takeSnapshot() {
+  const a = document.createElement('a');
+  a.href = '/stream'; a.download = 'snapshot_' + Date.now() + '.jpg';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  showToast('Snapshot saved', 'success');
+}
+
+// ── Telemetry Polling ──
+async function fetchTelemetry() {
+  try {
+    const r = await fetch('/telemetry');
+    const data = await r.json();
+    document.getElementById('teleHeap').textContent = data.heap || '--';
+    document.getElementById('teleUptime').textContent = data.uptime || '--';
+    document.getElementById('teleRSSI').textContent = data.rssi || '--';
+    document.getElementById('teleRes').textContent = data.resolution || '--';
+    document.getElementById('telePSRAM').textContent = data.free_psram || '--';
+    document.getElementById('teleTemp').textContent = data.temperature || '--';
+    if (data.resolution) document.getElementById('resDisplay').textContent = data.resolution;
+  } catch(e) {}
+}
+setInterval(fetchTelemetry, 3000);
+fetchTelemetry();
+
+// ── Health Polling ──
+async function fetchHealth() {
+  try {
+    const r = await fetch('/health');
+    const h = await r.json();
+    document.getElementById('healthEsp').className = 'status-dot ' + (h.esp32.connected ? 'on' : 'off');
+    document.getElementById('healthOllama').className = 'status-dot ' + (h.ollama.connected ? 'on' : 'off');
+  } catch(e) {
+    document.getElementById('healthEsp').className = 'status-dot na';
+    document.getElementById('healthOllama').className = 'status-dot na';
+  }
+}
+setInterval(fetchHealth, 5000);
+fetchHealth();
+
+// ── Model Selector ──
+async function loadModels() {
+  try {
+    const r = await fetch('/models');
+    const data = await r.json();
+    const sel = document.getElementById('modelSelect');
+    const current = sel.value || 'gemma3:latest';
+    sel.innerHTML = data.models.map(m =>
+      `<option value="${m}" ${m === current ? 'selected' : ''}>${m}</option>`
+    ).join('');
+  } catch(e) {}
+}
+async function changeModel() {
+  const model = document.getElementById('modelSelect').value;
+  try {
+    const r = await fetch('/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model }) });
+    const d = await r.json();
+    showToast('Model: ' + d.model, 'success');
+  } catch(e) { showToast('Model change failed', 'error'); }
+}
+loadModels();
+
+// ── Interval ──
+async function changeInterval() {
+  const interval = parseFloat(document.getElementById('intervalSelect').value);
+  try {
+    await fetch('/interval', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval }) });
+    showToast('Interval: ' + interval + 's', 'success');
+  } catch(e) { showToast('Interval change failed', 'error'); }
+}
+
+// ── Force Analysis ──
+async function forceAnalysis() {
+  const status = document.getElementById('analysisStatus');
+  const content = document.getElementById('analysisContent');
+  status.textContent = 'analyzing...';
+  status.className = 'text-[10px] font-mono text-sky-400 typing';
+  content.innerHTML = '<div class="text-sm text-slate-500 fade-in">Requesting analysis&hellip;</div>';
+  try {
+    await fetch('/analyze-now', { method: 'POST' });
+  } catch(e) { showToast('Analysis request failed', 'error'); }
+}
+
+// ── Clear Analysis ──
+function clearAnalysis() {
+  document.getElementById('analysisContent').innerHTML =
+    '<div class="flex items-center justify-center h-full text-slate-600 text-sm"><span>Cleared</span></div>';
+  document.getElementById('analysisStatus').textContent = 'cleared';
+  document.getElementById('analysisStatus').className = 'text-[10px] font-mono text-slate-600';
+}
+
+// ── SSE Analysis Stream ──
+(function() {
+  const content = document.getElementById('analysisContent');
+  const status = document.getElementById('analysisStatus');
+  const modelSpan = document.getElementById('analysisModel');
+  let evtSource = null;
+  let lastAnalysisTime = 0;
+
+  function connect() {
+    if (evtSource) evtSource.close();
+    evtSource = new EventSource('/analysis');
+
+    evtSource.onmessage = function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.text) {
+          lastAnalysisTime = Date.now();
+          const lines = data.text.split('\n').filter(l => l.trim());
+          content.innerHTML = lines.map((line, i) =>
+            `<div class="fade-in text-sm ${i === 0 ? 'font-medium text-white' : 'text-slate-300'} leading-relaxed mb-2">${escapeHtml(line)}</div>`
+          ).join('');
+          status.textContent = 'updated just now';
+          status.className = 'text-[10px] font-mono text-green-400';
+          if (data.model) modelSpan.textContent = data.model;
+          setTimeout(() => {
+            if (status.textContent === 'updated just now') {
+              status.textContent = 'live';
+              status.className = 'text-[10px] font-mono text-slate-500';
+            }
+          }, 2000);
+        }
+      } catch(err) {}
+    };
+
+    evtSource.onerror = function() {
+      status.textContent = 'reconnecting...';
+      status.className = 'text-[10px] font-mono text-amber-400';
+      setTimeout(connect, 3000);
+    };
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  connect();
+
+  // Countdown display
+  setInterval(() => {
+    const sel = document.getElementById('intervalSelect');
+    const interval = parseInt(sel.value) || 5;
+    const elapsed = (Date.now() - lastAnalysisTime) / 1000;
+    const remaining = Math.max(0, interval - elapsed);
+    document.getElementById('countdownDisplay').textContent = remaining.toFixed(1);
+  }, 500);
+})();
+
+// ── Keyboard Shortcuts ──
+document.addEventListener('keydown', (e) => {
+  if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); takeSnapshot(); }
+  if (e.key === 'g' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleGrid(); }
+  if (e.key === 'r' && !e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.querySelector('#rotGroup .cta[data-deg="90"]')?.click(); }
+  if (e.key === '0' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setRotation(0); }
+  if (e.key === 'n' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); forceAnalysis(); }
+});
+</script>
+
+</body>
+</html>

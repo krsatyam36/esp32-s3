@@ -1,0 +1,16 @@
+# How to Test: Vision LLM (Ollama)
+
+1. Prerequisites:
+   - Ensure Ollama is running (`ollama serve`).
+   - Ensure a vision model is pulled (e.g., `ollama pull llama3.2-vision`).
+
+2. Running the Test:
+   - Run `python vision_llm.py`.
+   - Select the desired model from the menu.
+   - Set an analysis interval (e.g., 5 seconds).
+
+3. Verification:
+   - Verify the live feed appears.
+   - Every 5 seconds, check the top overlay for a natural language description of the scene.
+   - Press `n` to force an immediate manual analysis.
+   - Press `a` to toggle auto-analysis.

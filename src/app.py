@@ -17,6 +17,7 @@ import base64
 import json
 import math
 import os
+import subprocess
 import threading
 import time
 import urllib.request
@@ -435,8 +436,10 @@ class EventGatekeeper:
         self.error = ""
         self._running = False
         self._events = deque(maxlen=200)
-        self._stats = {"detections": 0, "triggers": 0}
+        self._stats = {"detections": 0, "triggers": 0, "boss_roasts": 0}
         self._lock = threading.Lock()
+        self._cell_phone_since = 0.0
+        self._boss_triggered_at = 0.0
 
         try:
             from ultralytics import YOLO
@@ -474,14 +477,19 @@ class EventGatekeeper:
                 results = self.model(img, verbose=False, conf=YOLO_CONF)
                 dets = results[0].boxes
                 if dets is None or len(dets) == 0:
+                    self._cell_phone_since = 0.0
+                    self.analyzer.deactivate_boss_mode()
                     continue
 
                 objs = []
+                has_cell_phone = False
                 for box in dets:
                     cls_id = int(box.cls[0])
                     label = TARGET_CLASSES.get(cls_id, f"class_{cls_id}")
                     conf = float(box.conf[0])
                     objs.append({"class": label, "confidence": round(conf, 3)})
+                    if label == "cell phone":
+                        has_cell_phone = True
 
                 event = {
                     "frame_id": fid,
@@ -493,12 +501,29 @@ class EventGatekeeper:
                     self._events.append(event)
                     self._stats["detections"] += 1
 
+                # Boss mode: cell phone detected for > 5 seconds
+                now = time.time()
+                if has_cell_phone:
+                    if self._cell_phone_since == 0.0:
+                        self._cell_phone_since = now
+                    elapsed = now - self._cell_phone_since
+                    if elapsed >= 5.0 and (now - self._boss_triggered_at) > 10:
+                        self.analyzer.activate_boss_mode()
+                        self.analyzer.trigger_now()
+                        self._boss_triggered_at = now
+                        last_llm_trigger = now
+                        with self._lock:
+                            self._stats["boss_roasts"] += 1
+                else:
+                    self._cell_phone_since = 0.0
+                    self.analyzer.deactivate_boss_mode()
+
                 # Trigger heavy LLM if a high-value object appears (person, car, etc.)
                 high_value = {"person", "dog", "cat", "car", "laptop", "cell phone"}
                 detected_labels = {o["class"] for o in objs}
-                if detected_labels & high_value and (time.time() - last_llm_trigger) > 10:
+                if detected_labels & high_value and (now - last_llm_trigger) > 10:
                     self.analyzer.trigger_now()
-                    last_llm_trigger = time.time()
+                    last_llm_trigger = now
                     with self._lock:
                         self._stats["triggers"] += 1
             except Exception:
@@ -524,6 +549,11 @@ OLLAMA_SYSTEM_PROMPT = (
     "Focus on objects, people, text, colors, and motion. "
     "Start directly with the description — no introductory phrases."
 )
+BOSS_SYSTEM_PROMPT = (
+    "You are a toxic, passive-aggressive boss. "
+    "The user in this image is looking at their phone instead of coding. "
+    "Roast them mercilessly in one short sentence based on what you see."
+)
 OLLAMA_USER_PROMPT = "What do you see in this camera frame?"
 
 
@@ -533,6 +563,7 @@ class OllamaAnalyzer:
         self.model = model
         self.interval = interval
         self._last_text = ""
+        self._boss_mode = False
         self._lock = threading.Lock()
         self._running = False
         self._session = requests.Session()
@@ -558,6 +589,28 @@ class OllamaAnalyzer:
         with self._lock:
             self.interval = max(1.0, interval)
 
+    def activate_boss_mode(self):
+        with self._lock:
+            self._boss_mode = True
+
+    def deactivate_boss_mode(self):
+        with self._lock:
+            self._boss_mode = False
+
+    def is_boss_mode(self) -> bool:
+        with self._lock:
+            return self._boss_mode
+
+    def _say(self, text: str):
+        try:
+            subprocess.Popen(
+                ["espeak", "-v", "en-us", "-s", "150", "-p", "60", text],
+                stderr=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+            )
+        except Exception:
+            pass
+
     def _loop(self):
         last_frame_id = -1
         while self._running:
@@ -574,11 +627,12 @@ class OllamaAnalyzer:
                 b64 = base64.b64encode(raw).decode("utf-8")
                 with self._lock:
                     current_model = self.model
+                    boss = self._boss_mode
                 t0 = time.time()
                 payload = {
                     "model": current_model,
-                    "system": OLLAMA_SYSTEM_PROMPT,
-                    "prompt": OLLAMA_USER_PROMPT,
+                    "system": BOSS_SYSTEM_PROMPT if boss else OLLAMA_SYSTEM_PROMPT,
+                    "prompt": OLLAMA_USER_PROMPT if not boss else "Roast them.",
                     "images": [b64],
                     "stream": False,
                 }
@@ -590,6 +644,8 @@ class OllamaAnalyzer:
                     text = resp.json().get("response", "").strip()
                     with self._lock:
                         self._last_text = text
+                    if boss and text:
+                        self._say(text)
             except Exception:
                 pass
 
@@ -688,7 +744,7 @@ async def analysis_sse(request: Request):
                 break
             text = analyzer.get_result()
             if text and text != previous:
-                yield f"data: {json.dumps({'text': text, 'model': analyzer.get_model()})}\n\n"
+                yield f"data: {json.dumps({'text': text, 'model': analyzer.get_model(), 'boss': analyzer.is_boss_mode()})}\n\n"
                 previous = text
             await asyncio.sleep(0.5)
     return StreamingResponse(

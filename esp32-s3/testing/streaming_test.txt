@@ -1,0 +1,15 @@
+# How to Test: Core MJPEG Streaming
+
+1. Firmware Setup:
+   - Ensure `src/config.h` has correct WiFi credentials.
+   - Run `pio run -t upload` to flash the ESP32S3.
+   - Open `pio device monitor` and wait for "Stream Ready at: http://IP/".
+
+2. Python Viewer:
+   - Ensure `config.py` has the correct ESP32 IP.
+   - Run `python raw_view.py`.
+   - Verify the video window appears and shows a live feed.
+
+3. Performance Check:
+   - Check the top-left FPS counter. It should be stable (e.g., 15-30 FPS depending on resolution/WiFi).
+   - Move the camera; verify there is minimal lag.

@@ -1,0 +1,22 @@
+# How to Test: Hardware Controls & Capture
+
+Run `python raw_view.py` and use the following keys:
+
+1. Snapshot:
+   - Press `s`.
+   - Verify the console says "Snapshot saved".
+   - Check the `snapshots/` folder for the new .jpg file.
+
+2. Video Recording:
+   - Press `r` to start (verify "REC" appears in the status bar).
+   - Press `r` again to stop.
+   - Check the `recordings/` folder for the new .avi file.
+
+3. LED Control:
+   - Press `l` to toggle the built-in LED on/off.
+   - Press `L` (Shift+L) to trigger a 5-count flash sequence.
+
+4. Resolution Switching:
+   - Press `1` for SVGA (800x600).
+   - Press `2` for UXGA (1600x1200).
+   - Verify the window resizes and the image quality changes.
