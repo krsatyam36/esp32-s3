@@ -1,0 +1,13 @@
+# How to Test: Web Dashboard & OTA
+
+1. Web Dashboard:
+   - Open a browser and go to `http://[ESP32_IP]/dashboard`.
+   - Verify the stream is visible.
+   - Test the resolution buttons and LED toggles; verify the ESP32 responds.
+   - Check if the telemetry values update every 3 seconds.
+
+2. OTA (Over-The-Air) Update:
+   - Ensure the ESP32 is running and on the same WiFi.
+   - Run: `pio run -t upload --upload-port [ESP32_IP]`
+   - Verify the progress bar reaches 100% in the terminal.
+   - Verify the board reboots and resumes streaming.

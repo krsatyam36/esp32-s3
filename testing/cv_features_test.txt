@@ -1,0 +1,21 @@
+# How to Test: Computer Vision Features
+
+Run `python raw_view.py` and use the following keys:
+
+1. Face Detection:
+   - Press `f`.
+   - Look at the camera; verify a green box appears around your face with a "Face" label.
+
+2. QR Code Reading:
+   - Press `z`.
+   - Hold a QR code in front of the camera.
+   - Verify the decoded text appears at the bottom of the screen.
+
+3. Motion Detection:
+   - Press `m`.
+   - Move an object in the frame.
+   - Verify red bounding boxes appear around moving areas and "MOTION" text appears.
+
+4. Telemetry Overlay:
+   - Press `t`.
+   - Verify the cyan text overlay showing Heap, RSSI, Temp, and PSRAM appears on the left.
