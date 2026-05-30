@@ -21,6 +21,8 @@ import threading
 import time
 import urllib.request
 import urllib.error
+import http.client
+import socket
 from datetime import datetime, timezone
 from collections import deque
 
@@ -140,6 +142,7 @@ class CameraCapture:
 
     def _capture_loop(self):
         while self._running:
+            stream = None
             try:
                 stream = urllib.request.urlopen(self._url, timeout=3)
                 while self._running:
@@ -156,12 +159,21 @@ class CameraCapture:
                                 self._latest_frame = jpg
                                 self._frame_id += 1
                                 self._frame_timestamps.append(time.time())
-                    except (urllib.error.URLError, ConnectionError):
+                    except (urllib.error.URLError, ConnectionError,
+                            http.client.IncompleteRead, http.client.RemoteDisconnected,
+                            socket.timeout):
                         break
                     except Exception:
                         break
             except Exception:
-                time.sleep(1)
+                pass
+            finally:
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
+            time.sleep(2)
 
 # ──────────────────────────────────────────────
 #  Adaptive Rate Controller

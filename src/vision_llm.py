@@ -8,6 +8,9 @@ for real-time description without blocking the video display.
 
 import cv2
 import urllib.request
+import urllib.error
+import http.client
+import socket
 import numpy as np
 import time
 import json
@@ -166,21 +169,6 @@ def main():
     print(f"Interval: {analysis_interval}s")
     print("Connecting to stream...\n")
 
-    try:
-        stream = urllib.request.urlopen(f"{BASE_URL}/", timeout=10)
-    except Exception as e:
-        print(f"Failed to connect: {e}")
-        return
-
-    print("Connected! Controls:")
-    print("  q  - Quit")
-    print("  a  - Toggle auto-analysis")
-    print("  n  - Analyze current frame now")
-    print("  o  - Rotate 90° CW")
-    print("  g  - Toggle grid overlay")
-    print("  h  - Show controls")
-    print(f"  Capturing every {analysis_interval}s\n")
-
     ollama = OllamaVisionClient(model)
     buffer = StreamBuffer()
     auto_analyze = True
@@ -192,6 +180,7 @@ def main():
     fps_start = time.time()
     rotation_angle = 0
     show_grid = False
+    running = True
 
     help_text = (
         "Controls: q=Quit  a=Auto-toggle  n=Analyze now  "
@@ -220,124 +209,153 @@ def main():
         cv2.putText(img, text, (x + 1, y + 1), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
         cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
 
-    while True:
+    print("Controls:")
+    print("  q  - Quit")
+    print("  a  - Toggle auto-analysis")
+    print("  n  - Analyze current frame now")
+    print("  o  - Rotate 90° CW")
+    print("  g  - Toggle grid overlay")
+    print("  h  - Show controls")
+    print(f"  Capturing every {analysis_interval}s\n")
+
+    while running:
+        stream = None
         try:
-            data = stream.read(4096)
-            if not data:
-                print("Reconnecting...")
-                stream = urllib.request.urlopen(f"{BASE_URL}/", timeout=10)
-                continue
+            stream = urllib.request.urlopen(f"{BASE_URL}/", timeout=10)
+            print("Connected to ESP32-S3 stream.")
+            while running:
+                try:
+                    data = stream.read(4096)
+                    if not data:
+                        print("Reconnecting...")
+                        break
 
-            buffer.feed(data)
-            frame = buffer.get_frame()
-            if frame is None:
-                continue
+                    buffer.feed(data)
+                    frame = buffer.get_frame()
+                    if frame is None:
+                        continue
 
-            frame_count += 1
-            elapsed = time.time() - fps_start
-            fps = frame_count / elapsed if elapsed > 0 else 0
+                    frame_count += 1
+                    elapsed = time.time() - fps_start
+                    fps = frame_count / elapsed if elapsed > 0 else 0
 
-            now = time.time()
+                    now = time.time()
 
-            if auto_analyze and (now - last_analysis >= analysis_interval) and not ollama.processing:
-                ollama.ask(frame)
-                last_analysis = now
+                    if auto_analyze and (now - last_analysis >= analysis_interval) and not ollama.processing:
+                        ollama.ask(frame)
+                        last_analysis = now
 
-            response_text, error_text = ollama.get_status()
-            if response_text:
-                analysis_result = response_text
-                analysis_error = ""
-            if error_text:
-                analysis_error = error_text
+                    response_text, error_text = ollama.get_status()
+                    if response_text:
+                        analysis_result = response_text
+                        analysis_error = ""
+                    if error_text:
+                        analysis_error = error_text
 
-            # Apply rotation
-            if rotation_angle == 90:
-                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-            elif rotation_angle == 180:
-                frame = cv2.rotate(frame, cv2.ROTATE_180)
-            elif rotation_angle == 270:
-                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                    # Apply rotation
+                    if rotation_angle == 90:
+                        frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                    elif rotation_angle == 180:
+                        frame = cv2.rotate(frame, cv2.ROTATE_180)
+                    elif rotation_angle == 270:
+                        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            # Draw grid overlay
-            if show_grid:
-                h, w = frame.shape[:2]
-                color = (180, 180, 180)
-                cv2.line(frame, (w // 3, 0), (w // 3, h), color, 1)
-                cv2.line(frame, (2 * w // 3, 0), (2 * w // 3, h), color, 1)
-                cv2.line(frame, (0, h // 3), (w, h // 3), color, 1)
-                cv2.line(frame, (0, 2 * h // 3), (w, 2 * h // 3), color, 1)
+                    # Draw grid overlay
+                    if show_grid:
+                        h, w = frame.shape[:2]
+                        color = (180, 180, 180)
+                        cv2.line(frame, (w // 3, 0), (w // 3, h), color, 1)
+                        cv2.line(frame, (2 * w // 3, 0), (2 * w // 3, h), color, 1)
+                        cv2.line(frame, (0, h // 3), (w, h // 3), color, 1)
+                        cv2.line(frame, (0, 2 * h // 3), (w, 2 * h // 3), color, 1)
 
-            # ── Compact top status bar ──
-            top_bar_h = 95
-            overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 0), (frame.shape[1], top_bar_h), (0, 0, 0), -1)
-            frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
+                    # ── Compact top status bar ──
+                    top_bar_h = 95
+                    overlay = frame.copy()
+                    cv2.rectangle(overlay, (0, 0), (frame.shape[1], top_bar_h), (0, 0, 0), -1)
+                    frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
 
-            draw_text(frame, f"Model: {model}", 10, 22, (0, 255, 0), 0.55, 2)
-            draw_text(frame,
-                      f"FPS: {fps:.1f} | Auto: {'ON' if auto_analyze else 'OFF'} | "
-                      f"Interval: {analysis_interval}s | Next: {max(0, analysis_interval - (now - last_analysis)):.0f}s",
-                      10, 46, (255, 255, 0), 0.5, 1)
+                    draw_text(frame, f"Model: {model}", 10, 22, (0, 255, 0), 0.55, 2)
+                    draw_text(frame,
+                              f"FPS: {fps:.1f} | Auto: {'ON' if auto_analyze else 'OFF'} | "
+                              f"Interval: {analysis_interval}s | Next: {max(0, analysis_interval - (now - last_analysis)):.0f}s",
+                              10, 46, (255, 255, 0), 0.5, 1)
 
-            status = "Processing..." if ollama.processing else "Ready"
-            draw_text(frame, f"LLM: {status}", 10, 68, (255, 255, 0), 0.5, 1)
+                    status = "Processing..." if ollama.processing else "Ready"
+                    draw_text(frame, f"LLM: {status}", 10, 68, (255, 255, 0), 0.5, 1)
 
-            if rotation_angle:
-                draw_text(frame, f"Rot: {rotation_angle}°", 10, 88, (0, 255, 255), 0.5, 1)
+                    if rotation_angle:
+                        draw_text(frame, f"Rot: {rotation_angle}°", 10, 88, (0, 255, 255), 0.5, 1)
 
-            # ── Bottom analysis panel (dynamic height) ──
-            if analysis_result:
-                margin = 10
-                max_text_width = frame.shape[1] - 2 * margin
-                lines = wrap_text(analysis_result, max_text_width, scale=0.5, thick=1)
-                line_h = 22
-                pad = 12
-                max_lines = min(len(lines), 8)
-                panel_h = max_lines * line_h + pad
-                fh = frame.shape[0]
-                overlay = frame.copy()
-                cv2.rectangle(overlay, (0, fh - panel_h), (frame.shape[1], fh), (0, 0, 0), -1)
-                frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
-                for i, line in enumerate(lines[:max_lines]):
-                    draw_text(frame, line, margin, fh - panel_h + pad + i * line_h + 12,
-                              (255, 255, 255), 0.5, 1)
-                if len(lines) > max_lines:
-                    draw_text(frame, f"... +{len(lines) - max_lines} more lines",
-                              margin, fh - 8, (180, 180, 180), 0.4, 1)
-            elif analysis_error:
-                overlay = frame.copy()
-                cv2.rectangle(overlay, (0, frame.shape[0] - 40), (frame.shape[1], frame.shape[0]),
-                              (0, 0, 0), -1)
-                frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
-                draw_text(frame, f"Error: {analysis_error}", 10, frame.shape[0] - 14,
-                          (0, 0, 255), 0.5, 1)
+                    # ── Bottom analysis panel (dynamic height) ──
+                    if analysis_result:
+                        margin = 10
+                        max_text_width = frame.shape[1] - 2 * margin
+                        lines = wrap_text(analysis_result, max_text_width, scale=0.5, thick=1)
+                        line_h = 22
+                        pad = 12
+                        max_lines = min(len(lines), 8)
+                        panel_h = max_lines * line_h + pad
+                        fh = frame.shape[0]
+                        overlay = frame.copy()
+                        cv2.rectangle(overlay, (0, fh - panel_h), (frame.shape[1], fh), (0, 0, 0), -1)
+                        frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
+                        for i, line in enumerate(lines[:max_lines]):
+                            draw_text(frame, line, margin, fh - panel_h + pad + i * line_h + 12,
+                                      (255, 255, 255), 0.5, 1)
+                        if len(lines) > max_lines:
+                            draw_text(frame, f"... +{len(lines) - max_lines} more lines",
+                                      margin, fh - 8, (180, 180, 180), 0.4, 1)
+                    elif analysis_error:
+                        overlay = frame.copy()
+                        cv2.rectangle(overlay, (0, frame.shape[0] - 40), (frame.shape[1], frame.shape[0]),
+                                      (0, 0, 0), -1)
+                        frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
+                        draw_text(frame, f"Error: {analysis_error}", 10, frame.shape[0] - 14,
+                                  (0, 0, 255), 0.5, 1)
 
-            cv2.imshow("ESP32-S3 Vision LLM", frame)
-            key = cv2.waitKey(1) & 0xFF
+                    cv2.imshow("ESP32-S3 Vision LLM", frame)
+                    key = cv2.waitKey(1) & 0xFF
 
-            if key == ord("q"):
-                break
-            elif key == ord("o"):
-                rotation_angle = (rotation_angle + 90) % 360
-                print(f"Rotation: {rotation_angle}°")
-            elif key == ord("g"):
-                show_grid = not show_grid
-                print(f"Grid: {'ON' if show_grid else 'OFF'}")
-            elif key == ord("h"):
-                print(help_text)
-            elif key == ord("a"):
-                auto_analyze = not auto_analyze
-                print(f"Auto-analysis: {'ON' if auto_analyze else 'OFF'}")
-                if auto_analyze:
-                    last_analysis = 0
-            elif key == ord("n"):
-                if not ollama.processing:
-                    ollama.ask(frame)
-                    last_analysis = now
+                    if key == ord("q"):
+                        running = False
+                        break
+                    elif key == ord("o"):
+                        rotation_angle = (rotation_angle + 90) % 360
+                        print(f"Rotation: {rotation_angle}°")
+                    elif key == ord("g"):
+                        show_grid = not show_grid
+                        print(f"Grid: {'ON' if show_grid else 'OFF'}")
+                    elif key == ord("h"):
+                        print(help_text)
+                    elif key == ord("a"):
+                        auto_analyze = not auto_analyze
+                        print(f"Auto-analysis: {'ON' if auto_analyze else 'OFF'}")
+                        if auto_analyze:
+                            last_analysis = 0
+                    elif key == ord("n"):
+                        if not ollama.processing:
+                            ollama.ask(frame)
+                            last_analysis = now
 
+                except (urllib.error.URLError, ConnectionError,
+                        http.client.IncompleteRead, http.client.RemoteDisconnected,
+                        socket.timeout):
+                    print("Connection lost, reconnecting...")
+                    break
+                except Exception as e:
+                    print(f"Stream error: {e}")
+                    break
         except Exception as e:
-            print(f"Error: {e}")
-            break
+            print(f"Connection failed: {e}. Retrying in 2 seconds...")
+        finally:
+            if stream is not None:
+                try:
+                    stream.close()
+                except Exception:
+                    pass
+        if running:
+            time.sleep(2)
 
     cv2.destroyAllWindows()
     print("Vision LLM viewer closed.")

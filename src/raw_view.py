@@ -1,6 +1,8 @@
 import cv2
 import urllib.request
 import urllib.error
+import http.client
+import socket
 import numpy as np
 import time
 import json
@@ -434,50 +436,49 @@ class Viewer:
     def _capture_loop(self):
         """Background thread dedicated entirely to network streaming."""
         print(f"Connecting to {BASE_URL}...")
-        try:
-            stream = self.client.get_stream()
-        except Exception as e:
-            print(f"CRITICAL ERROR: {e}\nCheck if the board is on and the IP is correct.")
-            self.running = False
-            return
-
-        print("Connected! Streaming started...\n")
-
         while self.running:
+            stream = None
             try:
-                # 64KB chunks to prevent socket bottlenecks on high-res frames
-                data = stream.read(65536)
-                if not data:
-                    time.sleep(0.1)
-                    continue
-                
-                self.buffer.feed(data)
-                
-                # Flush the queue: Keep extracting frames until the buffer is empty. 
-                # We only want to pass the absolute newest one to the UI.
-                while True:
-                    frame = self.buffer.get_frame()
-                    if frame is None:
-                        break 
-                    
-                    with self.frame_lock:
-                        self.latest_frame = frame
-                        self.new_frame_ready = True
+                stream = self.client.get_stream()
+                print("Connected! Streaming started...\n")
+                while self.running:
+                    try:
+                        # 64KB chunks to prevent socket bottlenecks on high-res frames
+                        data = stream.read(65536)
+                        if not data:
+                            break
 
-            except urllib.error.URLError:
-                print("Connection lost, reconnecting...")
-                try:
-                    stream = self.client.get_stream()
-                except:
-                    time.sleep(1)
+                        self.buffer.feed(data)
+
+                        # Flush the queue: Keep extracting frames until the buffer is empty.
+                        # We only want to pass the absolute newest one to the UI.
+                        while True:
+                            frame = self.buffer.get_frame()
+                            if frame is None:
+                                break
+
+                            with self.frame_lock:
+                                self.latest_frame = frame
+                                self.new_frame_ready = True
+
+                    except (urllib.error.URLError, ConnectionError,
+                            http.client.IncompleteRead, http.client.RemoteDisconnected,
+                            socket.timeout):
+                        print("Connection lost, reconnecting...")
+                        break
+                    except Exception as e:
+                        print(f"Stream error: {e}. Attempting to reconnect...")
+                        break
             except Exception as e:
-                # If ANY error happens (like a timeout), re-initialize the stream
-                print(f"Stream error: {e}. Attempting to reconnect...")
-                try:
-                    stream = self.client.get_stream()
-                except Exception as reconnect_error:
-                    print(f"Reconnect failed: {reconnect_error}")
-                    time.sleep(1)
+                print(f"Connection failed: {e}\nCheck if the board is on and the IP is correct.")
+                print(f"Retrying in 2 seconds...")
+            finally:
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
+            time.sleep(2)
 
     def run(self):
         """Main UI Thread: Handles rendering, AI, and OpenCV events."""
