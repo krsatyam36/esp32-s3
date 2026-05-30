@@ -168,6 +168,9 @@ def main():
     print("  q  - Quit")
     print("  a  - Toggle auto-analysis")
     print("  n  - Analyze current frame now")
+    print("  o  - Rotate 90° CW")
+    print("  g  - Toggle grid overlay")
+    print("  h  - Show controls")
     print(f"  Capturing every {analysis_interval}s\n")
 
     ollama = OllamaVisionClient(model)
@@ -179,6 +182,17 @@ def main():
     fps_history = []
     frame_count = 0
     fps_start = time.time()
+    rotation_angle = 0
+    show_grid = False
+
+    help_text = (
+        "Controls: q=Quit  a=Auto-toggle  n=Analyze now  "
+        "o=Rotate  g=Grid  h=Help"
+    )
+
+    def draw_text(img, text, x, y, color=(255, 255, 255), scale=0.5, thick=1):
+        cv2.putText(img, text, (x + 1, y + 1), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
+        cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
 
     while True:
         try:
@@ -210,37 +224,64 @@ def main():
             if error_text:
                 analysis_error = error_text
 
-            overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 0), (frame.shape[1], 140), (0, 0, 0), -1)
-            frame = cv2.addWeighted(frame, 1.0, overlay, 0.5, 0)
+            # Apply rotation
+            if rotation_angle == 90:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            elif rotation_angle == 180:
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
+            elif rotation_angle == 270:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            cv2.putText(frame, f"Model: {model}", (10, 25),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2)
-            cv2.putText(frame, f"FPS: {fps:.1f} | Auto: {'ON' if auto_analyze else 'OFF'} | "
-                        f"Interval: {analysis_interval}s | Next: {max(0, analysis_interval - (now - last_analysis)):.0f}s",
-                        (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+            # Draw grid overlay
+            if show_grid:
+                h, w = frame.shape[:2]
+                color = (180, 180, 180)
+                cv2.line(frame, (w // 3, 0), (w // 3, h), color, 1)
+                cv2.line(frame, (2 * w // 3, 0), (2 * w // 3, h), color, 1)
+                cv2.line(frame, (0, h // 3), (w, h // 3), color, 1)
+                cv2.line(frame, (0, 2 * h // 3), (w, 2 * h // 3), color, 1)
+
+            # Top info panel with dark background
+            panel_h = 155
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (0, 0), (frame.shape[1], panel_h), (0, 0, 0), -1)
+            frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
+
+            draw_text(frame, f"Model: {model}", (10, 22), (0, 255, 0), 0.55, 2)
+            draw_text(frame,
+                      f"FPS: {fps:.1f} | Auto: {'ON' if auto_analyze else 'OFF'} | "
+                      f"Interval: {analysis_interval}s | Next: {max(0, analysis_interval - (now - last_analysis)):.0f}s",
+                      (10, 46), (255, 255, 0), 0.5, 1)
 
             status = "Processing..." if ollama.processing else "Ready"
-            cv2.putText(frame, f"LLM: {status}", (10, 72),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+            draw_text(frame, f"LLM: {status}", (10, 68), (255, 255, 0), 0.5, 1)
+
+            if rotation_angle:
+                draw_text(frame, f"Rot: {rotation_angle}°", (10, 90), (0, 255, 255), 0.5, 1)
 
             if analysis_result:
-                y = 95
+                y = 115
                 for line in analysis_result.split("\n"):
-                    cv2.putText(frame, line, (10, y),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                    draw_text(frame, line, (10, y), (255, 255, 255), 0.5, 1)
                     y += 20
-                    if y > 135:
+                    if y > panel_h - 5:
                         break
             elif analysis_error:
-                cv2.putText(frame, f"Error: {analysis_error}", (10, 95),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+                draw_text(frame, f"Error: {analysis_error}", (10, 115), (0, 0, 255), 0.5, 1)
 
             cv2.imshow("ESP32-S3 Vision LLM", frame)
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord("q"):
                 break
+            elif key == ord("o"):
+                rotation_angle = (rotation_angle + 90) % 360
+                print(f"Rotation: {rotation_angle}°")
+            elif key == ord("g"):
+                show_grid = not show_grid
+                print(f"Grid: {'ON' if show_grid else 'OFF'}")
+            elif key == ord("h"):
+                print(help_text)
             elif key == ord("a"):
                 auto_analyze = not auto_analyze
                 print(f"Auto-analysis: {'ON' if auto_analyze else 'OFF'}")

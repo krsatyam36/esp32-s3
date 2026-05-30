@@ -216,19 +216,114 @@ class TelemetryOverlay:
     def draw(self, frame: np.ndarray):
         if not self.data:
             return
-        lines = [
-            f"HEAP: {self.data.get('heap', '--')}",
-            f"Up: {self.data.get('uptime', '--')}s",
-            f"RSSI: {self.data.get('rssi', '--')} dBm",
-            f"Res: {self.data.get('resolution', '--')}",
-            f"PSRAM: {self.data.get('free_psram', '--')}",
-            f"Temp: {self.data.get('temperature', '--')} C",
+        items = [
+            (f"HEAP: {self.data.get('heap', '--')}", (255, 255, 0)),
+            (f"Up: {self.data.get('uptime', '--')}s", (255, 255, 0)),
+            (f"RSSI: {self.data.get('rssi', '--')} dBm", (255, 255, 0)),
+            (f"Res: {self.data.get('resolution', '--')}", (255, 255, 0)),
+            (f"PSRAM: {self.data.get('free_psram', '--')}", (255, 255, 0)),
+            (f"Temp: {self.data.get('temperature', '--')} C", (255, 255, 0)),
         ]
-        y = 60
-        for line in lines:
-            cv2.putText(frame, line, (10, y),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 0), 1)
-            y += 18
+        y = 48
+        line_h = 18
+        total_h = len(items) * line_h + 6
+        ModernHUD.panel(frame, 8, y - 4, 200, total_h, alpha=0.5)
+        cy = y + 2
+        for text, color in items:
+            ModernHUD.text_sm(frame, text, 14, cy + 10, color, 0.45, 1)
+            cy += line_h
+
+# ============================================================
+#  MODERN HUD OVERLAY
+# ============================================================
+
+class ModernHUD:
+    """Production-grade HUD overlay with dark panels and text shadows."""
+
+    FONT = cv2.FONT_HERSHEY_DUPLEX
+    FONT_SM = cv2.FONT_HERSHEY_SIMPLEX
+    BG_ALPHA = 0.55
+    PANEL_PAD = 8
+
+    @staticmethod
+    def text(frame, text, x, y, color=(255, 255, 255), scale=0.5, thick=1):
+        cv2.putText(frame, text, (x + 1, y + 1), ModernHUD.FONT, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
+        cv2.putText(frame, text, (x, y), ModernHUD.FONT, scale, color, thick, cv2.LINE_AA)
+
+    @staticmethod
+    def text_sm(frame, text, x, y, color=(255, 255, 255), scale=0.45, thick=1):
+        cv2.putText(frame, text, (x + 1, y + 1), ModernHUD.FONT_SM, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
+        cv2.putText(frame, text, (x, y), ModernHUD.FONT_SM, scale, color, thick, cv2.LINE_AA)
+
+    @staticmethod
+    def panel(frame, x, y, w, h, alpha=None):
+        if alpha is None:
+            alpha = ModernHUD.BG_ALPHA
+        roi = frame[y:y + h, x:x + w]
+        bg = np.full_like(roi, (0, 0, 0), dtype=np.uint8)
+        blended = cv2.addWeighted(roi, 1 - alpha, bg, alpha, 0)
+        frame[y:y + h, x:x + w] = blended
+
+    @staticmethod
+    def text_with_bg(frame, text, x, y, color=(255, 255, 255), scale=0.5, thick=1, pad=6):
+        (tw, th), bl = cv2.getTextSize(text, ModernHUD.FONT, scale, thick)
+        ModernHUD.panel(frame, x - pad, y - th - pad, tw + 2 * pad, th + bl + 2 * pad)
+        ModernHUD.text(frame, text, x, y, color, scale, thick)
+
+    @staticmethod
+    def top_bar(frame, fps_text, badges, color=(0, 255, 0)):
+        h, w = frame.shape[:2]
+        bar_h = 36
+        ModernHUD.panel(frame, 0, 0, w, bar_h, alpha=0.6)
+        ModernHUD.text(frame, fps_text, 12, 26, color, 0.55, 2)
+        if badges:
+            badge_str = " | ".join(badges)
+            bw, _ = cv2.getTextSize(badge_str, ModernHUD.FONT, 0.5, 1)[0]
+            bx = w - bw - 16
+            ModernHUD.panel(frame, bx - 6, 4, bw + 12, bar_h - 4, alpha=0.45)
+            ModernHUD.text(frame, badge_str, bx, 26, (255, 255, 0), 0.5, 1)
+
+    @staticmethod
+    def grid(frame):
+        h, w = frame.shape[:2]
+        color = (180, 180, 180)
+        for i in range(1, 3):
+            cv2.line(frame, (w * i // 3, 0), (w * i // 3, h), color, 1)
+            cv2.line(frame, (0, h * i // 3), (w, h * i // 3), color, 1)
+
+    @staticmethod
+    def crosshair(frame):
+        h, w = frame.shape[:2]
+        cx, cy = w // 2, h // 2
+        color = (255, 255, 255)
+        cv2.line(frame, (cx - 20, cy), (cx + 20, cy), color, 1)
+        cv2.line(frame, (cx, cy - 20), (cx, cy + 20), color, 1)
+        cv2.circle(frame, (cx, cy), 4, color, 1)
+
+    @staticmethod
+    def recording_indicator(frame, elapsed_sec):
+        h, w = frame.shape[:2]
+        text = f"● REC {int(elapsed_sec // 60):02d}:{int(elapsed_sec % 60):02d}"
+        (tw, th), bl = cv2.getTextSize(text, ModernHUD.FONT_SM, 0.55, 2)
+        pad = 8
+        x = w - tw - 2 * pad - 8
+        y = h - 10
+        ModernHUD.panel(frame, x, y - th - pad, tw + 2 * pad, th + bl + 2 * pad, alpha=0.7)
+        cv2.putText(frame, text, (x + pad, y), ModernHUD.FONT_SM, 0.55, (0, 0, 255), 3, cv2.LINE_AA)
+        cv2.putText(frame, text, (x + pad, y), ModernHUD.FONT_SM, 0.55, (0, 0, 255), 2, cv2.LINE_AA)
+
+    @staticmethod
+    def corner_info(frame, lines, x=10, y=None):
+        if y is None:
+            y = frame.shape[0] - 10
+        line_h = 18
+        total_h = len(lines) * line_h + 6
+        ModernHUD.panel(frame, x, y - total_h, 200, total_h, alpha=0.5)
+        cy = y - 6
+        for text, color in lines:
+            ModernHUD.text_sm(frame, text, x + 4, cy, color, 0.45, 1)
+            cy += line_h
+
 
 # ============================================================
 #  MAIN VIEWER (Multi-Threaded & Real-Time Synced)
@@ -255,6 +350,10 @@ class Viewer:
         self.show_telemetry = False
         self.led_on = False
         self.running = True
+        self.rotation_angle = 0
+        self.show_grid = False
+        self.show_crosshair = False
+        self.recording_start_time = 0
 
         # Threading synchronization variables
         self.latest_frame = None
@@ -262,16 +361,32 @@ class Viewer:
         self.frame_lock = threading.Lock()
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
 
-    def draw_status_bar(self, frame: np.ndarray):
-        parts = [f"FPS: {self.fps.smooth_fps:.1f}"]
-        if self.recorder.recording: parts.append("REC")
-        if self.enable_face: parts.append("FACE")
-        if self.enable_qr: parts.append("QR")
-        if self.enable_motion: parts.append("MOTION")
-        if self.show_telemetry: parts.append("TELE")
+    def draw_hud(self, frame: np.ndarray):
+        badges = []
+        if self.rotation_angle:
+            badges.append(f"ROT:{self.rotation_angle}°")
+        if self.enable_face:
+            badges.append("FACE")
+        if self.enable_qr:
+            badges.append("QR")
+        if self.enable_motion:
+            badges.append("MOTION")
+        if self.show_telemetry:
+            badges.append("TELE")
+        if self.show_grid:
+            badges.append("GRID")
+        if self.show_crosshair:
+            badges.append("CROSS")
+        ModernHUD.top_bar(frame, f"FPS: {self.fps.smooth_fps:.1f}", badges)
 
-        bar = " | ".join(parts)
-        cv2.putText(frame, bar, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        if self.show_grid:
+            ModernHUD.grid(frame)
+        if self.show_crosshair:
+            ModernHUD.crosshair(frame)
+
+        if self.recorder.recording and self.recording_start_time > 0:
+            elapsed = time.time() - self.recording_start_time
+            ModernHUD.recording_indicator(frame, elapsed)
 
     def handle_keys(self, key: int):
         if key == ord("q"):
@@ -301,6 +416,15 @@ class Viewer:
             self.enable_motion = not self.enable_motion
         elif key == ord("t"):
             self.show_telemetry = not self.show_telemetry
+        elif key == ord("o"):
+            self.rotation_angle = (self.rotation_angle + 90) % 360
+            print(f"Rotation: {self.rotation_angle}°")
+        elif key == ord("g"):
+            self.show_grid = not self.show_grid
+            print(f"Grid: {'ON' if self.show_grid else 'OFF'}")
+        elif key == ord("c"):
+            self.show_crosshair = not self.show_crosshair
+            print(f"Crosshair: {'ON' if self.show_crosshair else 'OFF'}")
         elif key == ord("l"):
             self.led_on = not self.led_on
             self.client.toggle_led("on" if self.led_on else "off")
@@ -380,6 +504,14 @@ class Viewer:
             # FPS accurately calculates actual camera frames
             fps_val = self.fps.update()
 
+            # Apply rotation before CV analysis so annotations match
+            if self.rotation_angle == 90:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            elif self.rotation_angle == 180:
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
+            elif self.rotation_angle == 270:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
             if self.enable_face and fps_val > 0:
                 faces = self.analyzer.detect_faces(frame)
                 self.analyzer.draw_face_boxes(frame, faces)
@@ -387,28 +519,30 @@ class Viewer:
             if self.enable_qr:
                 qr_data = self.analyzer.read_qr(frame)
                 if qr_data:
-                    cv2.putText(frame, f"QR: {qr_data}", (10, frame.shape[0] - 20),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 255), 2)
+                    ModernHUD.text_with_bg(frame, f"QR: {qr_data}", 12, frame.shape[0] - 14,
+                                           (255, 0, 255), 0.55, 2)
 
             if self.enable_motion:
                 motion, thresh = self.analyzer.detect_motion(frame)
                 if motion:
                     self.analyzer.draw_motion_contours(frame, thresh or np.zeros_like(frame))
-                    cv2.putText(frame, "MOTION", (frame.shape[1] - 120, 30),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    ModernHUD.text_with_bg(frame, "MOTION DETECTED!", frame.shape[1] - 170, 28,
+                                           (0, 0, 255), 0.6, 2)
 
             if self.show_telemetry:
                 self.telemetry.update()
                 self.telemetry.draw(frame)
 
-            self.draw_status_bar(frame)
+            self.draw_hud(frame)
 
             if not stream_recording and self.recorder.recording:
                 self.recorder.start(frame)
                 stream_recording = True
+                self.recording_start_time = time.time()
             elif stream_recording and self.recorder.recording:
                 self.recorder.write_frame(frame)
             elif stream_recording and not self.recorder.recording:
+                self.recording_start_time = 0
                 stream_recording = False
 
             cv2.imshow("ESP32-S3 Camera Viewer", frame)
@@ -436,11 +570,14 @@ def print_help():
  z    - Toggle QR code reader
  m    - Toggle motion detection
  t    - Toggle telemetry overlay
+ o    - Rotate 90° CW (cycles 0/90/180/270)
+ g    - Toggle rule-of-thirds grid
+ c    - Toggle center crosshair
  l    - Toggle LED on/off
  L    - Flash LED (shift+L)
  h    - Show this help
  Dashboard: {BASE_URL}/dashboard
-=========================================
+========================================
 """)
 
 if __name__ == "__main__":
