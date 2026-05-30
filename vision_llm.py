@@ -29,8 +29,15 @@ VISION_MODELS = [
     "gemma3:latest",
 ]
 
-SYSTEM_PROMPT = "You are a real-time camera assistant. Describe what you see in the image in 1-3 concise sentences. Focus on objects, people, text, colors, and motion."
-USER_PROMPT = "What do you see in this camera frame? Be brief and descriptive."
+# Use a single combined prompt for /api/generate — no chat structure.
+# The explicit "Start directly with" prefix suppresses verbose preamble.
+SYSTEM_PROMPT = (
+    "You are a real-time camera assistant. "
+    "Describe what you see in 1-3 concise sentences. "
+    "Focus on objects, people, text, colors, and motion. "
+    "Start directly with the description — no introductory phrases."
+)
+USER_PROMPT = "What do you see in this camera frame?"
 
 
 # ============================================================
@@ -62,19 +69,19 @@ class OllamaVisionClient:
             b64 = self._encode_frame(frame)
             payload = {
                 "model": self.model,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": USER_PROMPT, "images": [b64]},
-                ],
+                "system": SYSTEM_PROMPT,
+                "prompt": USER_PROMPT,
+                "images": [b64],
                 "stream": False,
             }
             resp = self.session.post(
-                f"{OLLAMA_URL}/api/chat", json=payload, timeout=60
+                f"{OLLAMA_URL}/api/generate", json=payload, timeout=60
             )
             if resp.status_code == 200:
                 data = resp.json()
                 with self.lock:
-                    self.last_response = data.get("message", {}).get("content", "").strip()
+                    # /api/generate returns the full text under the "response" key
+                    self.last_response = data.get("response", "").strip()
                     self.last_error = ""
             else:
                 with self.lock:
@@ -241,10 +248,10 @@ def main():
                 cv2.line(frame, (0, h // 3), (w, h // 3), color, 1)
                 cv2.line(frame, (0, 2 * h // 3), (w, 2 * h // 3), color, 1)
 
-            # Top info panel with dark background
-            panel_h = 155
+            # ── Compact top status bar ──
+            top_bar_h = 95
             overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 0), (frame.shape[1], panel_h), (0, 0, 0), -1)
+            cv2.rectangle(overlay, (0, 0), (frame.shape[1], top_bar_h), (0, 0, 0), -1)
             frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
 
             draw_text(frame, f"Model: {model}", 10, 22, (0, 255, 0), 0.55, 2)
@@ -257,17 +264,32 @@ def main():
             draw_text(frame, f"LLM: {status}", 10, 68, (255, 255, 0), 0.5, 1)
 
             if rotation_angle:
-                draw_text(frame, f"Rot: {rotation_angle}°", 10, 90, (0, 255, 255), 0.5, 1)
+                draw_text(frame, f"Rot: {rotation_angle}°", 10, 88, (0, 255, 255), 0.5, 1)
 
+            # ── Bottom analysis panel (dynamic height) ──
             if analysis_result:
-                y = 115
-                for line in analysis_result.split("\n"):
-                    draw_text(frame, line, 10, y, (255, 255, 255), 0.5, 1)
-                    y += 20
-                    if y > panel_h - 5:
-                        break
+                lines = analysis_result.split("\n")
+                line_h = 22
+                pad = 12
+                max_lines = min(len(lines), 8)
+                panel_h = max_lines * line_h + pad
+                fh = frame.shape[0]
+                overlay = frame.copy()
+                cv2.rectangle(overlay, (0, fh - panel_h), (frame.shape[1], fh), (0, 0, 0), -1)
+                frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
+                for i, line in enumerate(lines[:max_lines]):
+                    draw_text(frame, line, 10, fh - panel_h + pad + i * line_h + 12,
+                              (255, 255, 255), 0.5, 1)
+                if len(lines) > max_lines:
+                    draw_text(frame, f"... +{len(lines) - max_lines} more lines",
+                              10, fh - 8, (180, 180, 180), 0.4, 1)
             elif analysis_error:
-                draw_text(frame, f"Error: {analysis_error}", 10, 115, (0, 0, 255), 0.5, 1)
+                overlay = frame.copy()
+                cv2.rectangle(overlay, (0, frame.shape[0] - 40), (frame.shape[1], frame.shape[0]),
+                              (0, 0, 0), -1)
+                frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
+                draw_text(frame, f"Error: {analysis_error}", 10, frame.shape[0] - 14,
+                          (0, 0, 255), 0.5, 1)
 
             cv2.imshow("ESP32-S3 Vision LLM", frame)
             key = cv2.waitKey(1) & 0xFF
