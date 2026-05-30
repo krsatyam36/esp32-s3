@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32-S3 Camera Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #0b1120;
+      background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 50%, rgba(168, 85, 247, 0.04) 0%, transparent 50%);
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glass-light {
+      background: rgba(30, 41, 59, 0.50);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.70);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .stream-container {
+      position: relative;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      aspect-ratio: 4 / 3;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .stream-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .live-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .controls-btn {
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .controls-btn:hover { transform: translateY(-1px); filter: brightness(1.15); }
+    .controls-btn:active { transform: translateY(0); }
+    select {
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      background: rgba(15, 23, 42, 0.8);
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus { border-color: rgba(56, 189, 248, 0.5); }
+    .analysis-panel {
+      max-height: 420px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.08) transparent;
+    }
+    .analysis-panel::-webkit-scrollbar { width: 4px; }
+    .analysis-panel::-webkit-scrollbar-track { background: transparent; }
+    .analysis-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    .metric-value { font-variant-numeric: tabular-nums; }
+    .fade-in { animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .typing-indicator::after {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 14px;
+      background: #38bdf8;
+      margin-left: 4px;
+      animation: blink 0.8s step-end infinite;
+      vertical-align: middle;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+</head>
+<body>
+
+  <div class="max-w-7xl mx-auto px-4 py-5">
+
+    <!-- ── Header ── -->
+    <header class="glass rounded-2xl px-6 py-4 mb-5 flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2.5">
+          <span class="live-dot"></span>
+          <span class="text-xs font-semibold tracking-widest text-green-400 uppercase">Live</span>
+        </div>
+        <h1 class="text-lg font-bold tracking-tight text-white/90">
+          ESP32-S3 <span class="text-sky-400">Camera Dashboard</span>
+        </h1>
+      </div>
+      <div class="flex items-center gap-3 text-xs text-slate-400">
+        <span id="fpsDisplay" class="font-mono">0 FPS</span>
+        <span class="w-px h-4 bg-white/10"></span>
+        <span id="resDisplay" class="font-mono">--</span>
+      </div>
+    </header>
+
+    <!-- ── Main Grid ── -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+      <!-- ── Left Column: Stream + Controls ── -->
+      <div class="xl:col-span-2 space-y-4">
+
+        <!-- Video Feed -->
+        <div class="glass-card rounded-2xl p-3">
+          <div class="stream-container">
+            <img id="videoFeed" src="/stream" alt="Live stream" />
+            <div class="live-badge">
+              <span class="live-dot"></span>
+              <span class="text-green-400 text-xs font-semibold tracking-wide">LIVE</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="glass-card rounded-2xl p-5">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-semibold uppercase tracking-widest text-slate-500 mr-1">LED</span>
+            <button class="controls-btn bg-green-600/80 text-white hover:bg-green-500" onclick="setLed('on')">
+              <span>&#9679;</span> ON
+            </button>
+            <button class="controls-btn bg-red-600/60 text-white hover:bg-red-500" onclick="setLed('off')">
+              <span>&#9711;</span> OFF
+            </button>
+            <button class="controls-btn bg-amber-600/60 text-white hover:bg-amber-500" onclick="flashLed()">
+              &#9889; Flash
+            </button>
+
+            <span class="w-px h-7 bg-white/5 mx-2"></span>
+
+            <span class="text-xs font-semibold uppercase tracking-widest text-slate-500 mr-1">Resolution</span>
+            <select id="resSelect" onchange="changeResolution()">
+              <option value="SVGA">SVGA &middot; 800&times;600</option>
+              <option value="UXGA" selected>UXGA &middot; 1600&times;1200</option>
+            </select>
+
+            <span class="w-px h-7 bg-white/5 mx-2"></span>
+
+            <button class="controls-btn bg-slate-700/60 text-white hover:bg-slate-600" onclick="takeSnapshot()">
+              &#128247; Snapshot
+            </button>
+          </div>
+        </div>
+
+        <!-- Telemetry -->
+        <div class="glass-card rounded-2xl p-5">
+          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#128202; Telemetry</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            <div class="bg-black/40 rounded-xl p-3 text-center">
+              <div class="metric-value text-lg font-bold text-sky-400" id="teleHeap">--</div>
+              <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Free Heap</div>
+            </div>
+            <div class="bg-black/40 rounded-xl p-3 text-center">
+              <div class="metric-value text-lg font-bold text-sky-400" id="teleUptime">--</div>
+              <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Uptime (s)</div>
+            </div>
+            <div class="bg-black/40 rounded-xl p-3 text-center">
+              <div class="metric-value text-lg font-bold text-sky-400" id="teleRSSI">--</div>
+              <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">RSSI</div>
+            </div>
+            <div class="bg-black/40 rounded-xl p-3 text-center">
+              <div class="metric-value text-lg font-bold text-sky-400" id="teleRes">--</div>
+              <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Resolution</div>
+            </div>
+            <div class="bg-black/40 rounded-xl p-3 text-center">
+              <div class="metric-value text-lg font-bold text-sky-400" id="telePSRAM">--</div>
+              <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Free PSRAM</div>
+            </div>
+            <div class="bg-black/40 rounded-xl p-3 text-center">
+              <div class="metric-value text-lg font-bold text-sky-400" id="teleTemp">--</div>
+              <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Temp (&deg;C)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Right Column: AI Analysis ── -->
+      <div class="space-y-4">
+
+        <div class="glass-card rounded-2xl p-5 h-full flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">
+              &#129302; AI Vision Analysis
+            </h2>
+            <span id="analysisStatus" class="text-[10px] font-mono text-slate-500">idle</span>
+          </div>
+
+          <div id="analysisContent" class="analysis-panel flex-1">
+            <div class="flex items-center justify-center h-full text-slate-600 text-sm">
+              <span>Waiting for analysis&hellip;</span>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-500">
+            <span id="analysisModel">Model: <span class="font-mono text-slate-400">--</span></span>
+            <button
+              id="forceAnalysisBtn"
+              class="text-sky-400 hover:text-sky-300 transition-colors font-medium cursor-pointer bg-transparent border-none"
+              onclick="forceAnalysis()">
+              Analyze now &rarr;
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer class="mt-5 text-center text-[11px] text-slate-700">
+      ESP32-S3 Camera Dashboard &middot; FastAPI + Ollama
+    </footer>
+  </div>
+
+  <!-- ── Toast ── -->
+  <div id="toast" class="fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white hidden z-50 shadow-2xl"></div>
+
+  <script>
+    // ── Helpers ──
+    function showToast(msg, type) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white z-50 shadow-2xl';
+      t.style.display = 'block';
+      if (type === 'success') t.style.borderLeft = '4px solid #22c55e';
+      else if (type === 'error') t.style.borderLeft = '4px solid #ef4444';
+      else t.style.borderLeft = '4px solid #3b82f6';
+      setTimeout(() => { t.style.display = 'none'; }, 2500);
+    }
+
+    // ── Controls ──
+    async function setLed(state) {
+      try {
+        const r = await fetch('/led', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state })
+        });
+        const data = await r.json();
+        if (data.success) showToast('LED ' + state.toUpperCase(), 'success');
+        else showToast('LED command failed', 'error');
+      } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function flashLed() {
+      try {
+        const r = await fetch('/flash?count=5', { method: 'POST' });
+        const data = await r.json();
+        if (data.success) showToast('Flashing 5 times', 'success');
+        else showToast('Flash failed', 'error');
+      } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    async function changeResolution() {
+      const val = document.getElementById('resSelect').value;
+      try {
+        const r = await fetch('/res', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: val })
+        });
+        const data = await r.json();
+        if (data.success) showToast('Resolution: ' + val, 'success');
+        else showToast('Resolution change failed', 'error');
+      } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    }
+
+    function takeSnapshot() {
+      const a = document.createElement('a');
+      a.href = '/stream';
+      a.download = 'snapshot_' + Date.now() + '.jpg';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('Snapshot saved', 'success');
+    }
+
+    // ── Telemetry Polling ──
+    async function fetchTelemetry() {
+      try {
+        const r = await fetch('/telemetry');
+        const data = await r.json();
+        document.getElementById('teleHeap').textContent = data.heap || '--';
+        document.getElementById('teleUptime').textContent = data.uptime || '--';
+        document.getElementById('teleRSSI').textContent = data.rssi || '--';
+        document.getElementById('teleRes').textContent = data.resolution || '--';
+        document.getElementById('telePSRAM').textContent = data.free_psram || '--';
+        document.getElementById('teleTemp').textContent = data.temperature || '--';
+        if (data.resolution) document.getElementById('resDisplay').textContent = data.resolution;
+      } catch(e) {}
+    }
+    setInterval(fetchTelemetry, 3000);
+    fetchTelemetry();
+
+    // ── FPS estimation from stream img load events ──
+    (function() {
+      const img = document.getElementById('videoFeed');
+      let lastTime = performance.now();
+      let fps = 0;
+      img.addEventListener('load', () => {
+        const now = performance.now();
+        fps = Math.round(1000 / (now - lastTime));
+        lastTime = now;
+        document.getElementById('fpsDisplay').textContent = fps + ' FPS';
+      });
+    })();
+
+    // ── SSE Analysis Stream ──
+    (function() {
+      const content = document.getElementById('analysisContent');
+      const status = document.getElementById('analysisStatus');
+      const modelSpan = document.getElementById('analysisModel').querySelector('span');
+      let evtSource = null;
+
+      function connectSSE() {
+        if (evtSource) evtSource.close();
+        evtSource = new EventSource('/analysis');
+
+        evtSource.onmessage = function(e) {
+          try {
+            const data = JSON.parse(e.data);
+            if (data.text) {
+              const lines = data.text.split('\n').filter(l => l.trim());
+              content.innerHTML = lines.map((line, i) =>
+                `<div class="fade-in text-sm text-slate-200 leading-relaxed mb-2.5 ${i === 0 ? 'font-medium' : 'text-slate-300'}">${escapeHtml(line)}</div>`
+              ).join('');
+              status.textContent = 'updated';
+              status.className = 'text-[10px] font-mono text-green-400';
+              if (data.model) modelSpan.textContent = data.model;
+              setTimeout(() => { status.textContent = 'live'; status.className = 'text-[10px] font-mono text-slate-500'; }, 2000);
+            }
+          } catch(err) {}
+        };
+
+        evtSource.onerror = function() {
+          status.textContent = 'reconnecting...';
+          status.className = 'text-[10px] font-mono text-amber-400';
+          setTimeout(connectSSE, 3000);
+        };
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      connectSSE();
+
+      // Expose for the force analysis button
+      window.forceAnalysis = function() {
+        status.textContent = 'analyzing...';
+        status.className = 'text-[10px] font-mono text-sky-400 typing-indicator';
+        content.innerHTML = '<div class="text-sm text-slate-500">Requesting analysis&hellip;</div>';
+        // The background thread handles the interval; we just reset SSE expectation.
+        // The next SSE event will update the content.
+        showToast('Analysis requested', 'info');
+        setTimeout(() => {
+          if (status.textContent === 'analyzing...') {
+            status.textContent = 'live';
+            status.className = 'text-[10px] font-mono text-slate-500';
+          }
+        }, 5000);
+      };
+    })();
+
+    // ── Keyboard shortcuts ──
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); takeSnapshot(); }
+    });
+  </script>
+
+</body>
+</html>
