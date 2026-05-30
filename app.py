@@ -155,7 +155,8 @@ OLLAMA_USER_PROMPT = "What do you see in this camera frame?"
 
 class OllamaAnalyzer:
     """Periodically grabs the latest camera frame and sends it to Ollama
-    for visual analysis.  Results are polled via get_result()."""
+    for visual analysis.  Results are polled via get_result().
+    Supports on-demand analysis via trigger_now() and dynamic model switching."""
 
     def __init__(self, camera: CameraCapture, model: str, interval: float = 5.0):
         self.camera = camera
@@ -165,6 +166,7 @@ class OllamaAnalyzer:
         self._lock = threading.Lock()
         self._running = False
         self._session = requests.Session()
+        self._trigger = threading.Event()
 
     def start(self):
         self._running = True
@@ -174,24 +176,43 @@ class OllamaAnalyzer:
     def stop(self):
         self._running = False
 
+    def trigger_now(self):
+        """Force an immediate analysis on the next loop iteration."""
+        self._trigger.set()
+
+    def set_model(self, model: str):
+        """Change the model at runtime."""
+        with self._lock:
+            self.model = model
+
+    def set_interval(self, interval: float):
+        """Change the analysis interval at runtime."""
+        with self._lock:
+            self.interval = max(1.0, interval)
+
     def _loop(self):
         last_frame_id = -1
         while self._running:
-            frame_id = self.camera.frame_id
-            if frame_id == last_frame_id:
-                time.sleep(0.5)
-                continue
-            last_frame_id = frame_id
+            # If not forced, wait for the interval
+            forced = self._trigger.wait(timeout=self.interval)
+            self._trigger.clear()
 
             raw = self.camera.latest_frame
             if raw is None:
-                time.sleep(self.interval)
                 continue
+
+            # Skip if same frame (unless forced)
+            fid = self.camera.frame_id
+            if fid == last_frame_id and not forced:
+                continue
+            last_frame_id = fid
 
             try:
                 b64 = base64.b64encode(raw).decode("utf-8")
+                with self._lock:
+                    current_model = self.model
                 payload = {
-                    "model": self.model,
+                    "model": current_model,
                     "system": OLLAMA_SYSTEM_PROMPT,
                     "prompt": OLLAMA_USER_PROMPT,
                     "images": [b64],
@@ -207,11 +228,13 @@ class OllamaAnalyzer:
             except Exception:
                 pass
 
-            time.sleep(self.interval)
-
     def get_result(self) -> str:
         with self._lock:
             return self._last_text
+
+    def get_model(self) -> str:
+        with self._lock:
+            return self.model
 
 
 # ──────────────────────────────────────────────
@@ -294,7 +317,7 @@ async def analysis_sse(request: Request):
                 break
             text = analyzer.get_result()
             if text and text != previous:
-                yield f"data: {json.dumps({'text': text, 'model': OLLAMA_MODEL})}\n\n"
+                yield f"data: {json.dumps({'text': text, 'model': analyzer.get_model()})}\n\n"
                 previous = text
             await asyncio.sleep(0.5)
 
@@ -352,6 +375,65 @@ async def set_resolution(body: ResValue):
 @app.get("/telemetry")
 async def get_telemetry():
     return esp32.get_telemetry()
+
+
+# ─── Model & Analysis Control ────────────────
+
+class ModelSelect(BaseModel):
+    model: str
+
+
+class IntervalSelect(BaseModel):
+    interval: float
+
+
+@app.post("/model")
+async def set_model(body: ModelSelect):
+    """Switch the vision model at runtime."""
+    analyzer.set_model(body.model)
+    return {"success": True, "model": body.model}
+
+
+@app.post("/interval")
+async def set_interval(body: IntervalSelect):
+    """Change the analysis interval (seconds)."""
+    analyzer.set_interval(body.interval)
+    return {"success": True, "interval": max(1.0, body.interval)}
+
+
+@app.post("/analyze-now")
+async def analyze_now():
+    """Force an immediate analysis of the latest frame."""
+    analyzer.trigger_now()
+    return {"success": True}
+
+
+# ─── Health & Status ─────────────────────────
+
+@app.get("/health")
+async def health():
+    """Returns connection status for ESP32 and Ollama."""
+    status = {
+        "esp32": {"connected": False, "error": None},
+        "ollama": {"connected": False, "error": None},
+        "model": analyzer.get_model(),
+        "interval": analyzer.interval,
+    }
+    # Check ESP32
+    try:
+        resp = urllib.request.urlopen(f"{BASE_URL}/telemetry", timeout=3)
+        if resp.status == 200:
+            status["esp32"]["connected"] = True
+    except Exception as e:
+        status["esp32"]["error"] = str(e)
+    # Check Ollama
+    try:
+        resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=3)
+        if resp.status_code == 200:
+            status["ollama"]["connected"] = True
+    except Exception as e:
+        status["ollama"]["error"] = str(e)
+    return status
 
 
 # ─── Serve Frontend ──────────────────────────

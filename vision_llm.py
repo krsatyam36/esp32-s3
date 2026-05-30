@@ -21,12 +21,13 @@ BASE_URL = ESP32_IP.rstrip("/")
 OLLAMA_URL = "http://localhost:11434"
 
 # Vision-capable models available locally
+# gemma3:latest is the default (first position)
 VISION_MODELS = [
+    "gemma3:latest",
     "llama3.2-vision:latest",
     "qwen2.5vl:7b",
     "minicpm-v:latest",
     "llava:7b",
-    "gemma3:latest",
 ]
 
 # Use a single combined prompt for /api/generate — no chat structure.
