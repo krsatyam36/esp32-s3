@@ -10,4 +10,15 @@ node_modules
 # Local config files with secrets
 src/config.py
 src/config.h
+**/config.py
+**/config.h
 __pycache__/
+*.pyc
+snapshots/
+recordings/
+.DS_Store
+*.log
+.vscode/
+.idea/
+*.swp
+*.swo
