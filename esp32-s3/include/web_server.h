@@ -189,12 +189,26 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
         "\"heap\":%lu,"
         "\"uptime\":%lu,"
         "\"rssi\":%d,"
+        "\"ip\":\"%s\","
         "\"resolution\":\"%s\","
         "\"free_psram\":%lu,"
         "\"temperature\":%.1f"
         "}",
-        heap, uptime_sec, rssi, resolutionToString(current_resolution), psram, temp);
+        heap, uptime_sec, rssi, WiFi.localIP().toString().c_str(),
+        resolutionToString(current_resolution), psram, temp);
 
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
+// ==================== PING / HEALTH ====================
+
+static esp_err_t ping_handler(httpd_req_t *req) {
+    char json[128];
+    snprintf(json, sizeof(json),
+        "{\"status\":\"ok\",\"ip\":\"%s\",\"uptime\":%lu}",
+        WiFi.localIP().toString().c_str(), millis() / 1000);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
@@ -251,6 +265,12 @@ void startWebServer() {
         .handler = telemetry_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t ping_uri = {
+        .uri = "/ping",
+        .method = HTTP_GET,
+        .handler = ping_handler,
+        .user_ctx = NULL
+    };
     httpd_uri_t dashboard_uri = {
         .uri = "/dashboard",
         .method = HTTP_GET,
@@ -266,6 +286,7 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &led_uri);
         httpd_register_uri_handler(stream_httpd, &flash_uri);
         httpd_register_uri_handler(stream_httpd, &telemetry_uri);
+        httpd_register_uri_handler(stream_httpd, &ping_uri);
         httpd_register_uri_handler(stream_httpd, &dashboard_uri);
         Serial.println("Server started with all endpoints");
     } else {
