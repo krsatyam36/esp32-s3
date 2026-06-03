@@ -409,6 +409,12 @@ class Viewer:
             self.client.set_resolution("SVGA")
         elif key == ord("2"):
             self.client.set_resolution("UXGA")
+        elif key == ord("3"):
+            self.client.set_resolution("VGA")
+        elif key == ord("4"):
+            self.client.set_resolution("QVGA")
+        elif key == ord("5"):
+            self.client.set_resolution("QQVGA")
         elif key == ord("f"):
             self.enable_face = not self.enable_face
         elif key == ord("z"):
