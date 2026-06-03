@@ -567,7 +567,8 @@ class Viewer:
                 self.recording_start_time = 0
                 stream_recording = False
 
-            cv2.imshow("ESP32-S3 Camera Viewer", frame)
+            h, w = frame.shape[:2]
+            cv2.imshow(f"ESP32-S3 Camera Viewer ({w}x{h})", frame)
             
             key = cv2.waitKey(1) & 0xFF
             self.handle_keys(key)
