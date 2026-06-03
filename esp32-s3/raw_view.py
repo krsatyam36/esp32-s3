@@ -440,19 +440,26 @@ class Viewer:
 
     def _capture_loop(self):
         """Background thread dedicated entirely to network streaming."""
-        print(f"Connecting to {BASE_URL}...")
-        try:
-            stream = self.client.get_stream()
-        except Exception as e:
-            print(f"CRITICAL ERROR: {e}\nCheck if the board is on and the IP is correct.")
+        retries = 0
+        max_retries = 5
+        while self.running and retries < max_retries:
+            try:
+                print(f"Connecting to {BASE_URL}...")
+                stream = self.client.get_stream()
+                print("Connected! Streaming started...\n")
+                retries = 0
+                break
+            except Exception as e:
+                retries += 1
+                print(f"Connection attempt {retries}/{max_retries} failed: {e}")
+                time.sleep(2 * retries)
+        else:
+            print(f"CRITICAL ERROR: Could not connect after {max_retries} attempts.")
             self.running = False
             return
 
-        print("Connected! Streaming started...\n")
-
         while self.running:
             try:
-                # 64KB chunks to prevent socket bottlenecks on high-res frames
                 data = stream.read(65536)
                 if not data:
                     time.sleep(0.1)
@@ -460,8 +467,6 @@ class Viewer:
                 
                 self.buffer.feed(data)
                 
-                # Flush the queue: Keep extracting frames until the buffer is empty. 
-                # We only want to pass the absolute newest one to the UI.
                 while True:
                     frame = self.buffer.get_frame()
                     if frame is None:
@@ -471,20 +476,30 @@ class Viewer:
                         self.latest_frame = frame
                         self.new_frame_ready = True
 
-            except urllib.error.URLError:
-                print("Connection lost, reconnecting...")
-                try:
-                    stream = self.client.get_stream()
-                except:
-                    time.sleep(1)
+            except (urllib.error.URLError, ConnectionError) as e:
+                print(f"Stream lost: {e}. Reconnecting...")
+                for attempt in range(3):
+                    try:
+                        stream = self.client.get_stream()
+                        print("Reconnected.")
+                        break
+                    except Exception:
+                        time.sleep(1.5 * (attempt + 1))
+                else:
+                    print("Reconnect failed. Stopping capture.")
+                    self.running = False
             except Exception as e:
-                # If ANY error happens (like a timeout), re-initialize the stream
-                print(f"Stream error: {e}. Attempting to reconnect...")
-                try:
-                    stream = self.client.get_stream()
-                except Exception as reconnect_error:
-                    print(f"Reconnect failed: {reconnect_error}")
-                    time.sleep(1)
+                print(f"Stream error: {e}. Reconnecting...")
+                for attempt in range(3):
+                    try:
+                        stream = self.client.get_stream()
+                        print("Reconnected.")
+                        break
+                    except Exception:
+                        time.sleep(1.5 * (attempt + 1))
+                else:
+                    print("Reconnect failed. Stopping capture.")
+                    self.running = False
 
     def run(self):
         """Main UI Thread: Handles rendering, AI, and OpenCV events."""
