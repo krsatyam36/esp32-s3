@@ -582,6 +582,13 @@ def print_help():
 """)
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="ESP32-S3 Camera Viewer")
+    parser.add_argument("--ip", default=None, help="ESP32 IP address (e.g. http://192.168.1.100/)")
+    args = parser.parse_args()
+    if args.ip:
+        import config
+        config.ESP32_IP = args.ip
     print_help()
     viewer = Viewer()
     viewer.run()
