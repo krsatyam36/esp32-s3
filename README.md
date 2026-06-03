@@ -2,7 +2,7 @@
 
 # Seeed XIAO ESP32S3 Sense — Edge Intelligence Platform
 
-**v1.2.1** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller*
+**v1.3.1** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller*
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1+-F58220?style=flat&logo=platformio&logoColor=white)](https://platformio.org)
 [![ESP32](https://img.shields.io/badge/ESP32-S3-E7352C?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com)
@@ -58,12 +58,12 @@ It includes:
 - 🚀 **Low-latency MJPEG streaming** over WiFi
 - 📷 **Snapshot capture** — press `s` or use the dashboard
 - 🎥 **Video recording** — toggle with `r`, saves to `recordings/`
-- 🔄 **Resolution switching** — `1` (SVGA) / `2` (UXGA) keys or dashboard
+- 🔄 **Resolution switching** — `1` (SVGA) / `2` (UXGA) / `3` (VGA) / `4` (QVGA) / `5` (QQVGA)
 - 🧑 **Face detection overlay** — toggle with `f`
 - 📱 **QR code reader** — toggle with `z`, decodes in real time
 - 🏃 **Motion detection** — toggle with `m`, highlights movement
 - 💡 **LED control** — toggle with `l`, flash with `L`
-- 📊 **Telemetry overlay** — toggle with `t` (heap, uptime, RSSI, temp, PSRAM)
+- 📊 **Telemetry overlay** — toggle with `t` (heap, uptime, RSSI, temp, PSRAM, IP)
 - 🌐 **Web dashboard** — full control UI at `http://localhost:8000`
 - 📡 **OTA updates** — upload firmware over WiFi via ArduinoOTA
 - 🔁 **Auto WiFi reconnect** — handles disconnects gracefully
@@ -78,6 +78,12 @@ It includes:
 - 👁 **YOLO event gatekeeper** — real-time object detection triggering LLM analysis
 - ⚡ **Adaptive rate controller** — auto-adjusts resolution & interval based on RSSI/latency
 - ☠️ **Boss Mode** — detects cell phone distraction & roasts you via LLM + TTS
+- ❤️ **Health endpoint** — `/ping` for connectivity checks
+- 🩺 **Camera diagnostics** — detailed init failure reporting with automatic fallback
+- 🔁 **Exponential backoff reconnect** — resilient stream recovery in viewer
+- 🖼️ **Frame dimensions** — displayed in viewer window title
+- 🧪 **Stream test script** — `stream_test.py` for quick connectivity check
+- 🎛️ **CLI arguments** — override IP, port, and model via command line
 
 ## System Prerequisites
 
@@ -111,6 +117,10 @@ Your terminal prompt should now begin with `(vir_esp32SENSEenv)`.
 With the virtual environment active, install PlatformIO and the libraries needed by the viewer/server:
 
 ```bash
+# Install from requirements.txt (recommended)
+pip install -r esp32-s3/requirements.txt
+
+# Or install individually:
 pip install platformio opencv-python numpy fastapi uvicorn requests
 # Optional — for event gatekeeper:
 pip install ultralytics
@@ -209,6 +219,8 @@ Run the viewer:
 
 ```bash
 python raw_view.py
+# Or override the IP via command line:
+python raw_view.py --ip http://192.168.1.X/
 ```
 
 **Keyboard Controls:**
@@ -220,6 +232,9 @@ python raw_view.py
 | `r` | Toggle video recording to `recordings/` |
 | `1` | Set resolution to SVGA (800×600) |
 | `2` | Set resolution to UXGA (1600×1200) |
+| `3` | Set resolution to VGA (640×480) |
+| `4` | Set resolution to QVGA (320×240) |
+| `5` | Set resolution to QQVGA (160×120) |
 | `f` | Toggle face detection |
 | `z` | Toggle QR code reader |
 | `m` | Toggle motion detection |
@@ -296,6 +311,8 @@ The FastAPI server provides a web dashboard with all AI features:
 
 ```bash
 python src/app.py
+# Or with custom options:
+python src/app.py --ip http://192.168.1.X/ --port 8000 --model gemma3:latest
 ```
 
 Open **http://localhost:8000** in your browser.
@@ -321,10 +338,11 @@ Open **http://localhost:8000** in your browser.
 | `/search` | GET/POST | Semantic video search |
 | `/system-status` | GET | Full system status |
 | `/health` | GET | ESP32 + Ollama connectivity |
-| `/telemetry` | GET | ESP32 telemetry proxy |
+| `/telemetry` | GET | ESP32 telemetry proxy (includes IP) |
 | `/led` | POST | Toggle LED |
-| `/res` | POST | Set resolution |
+| `/res` | POST | Set resolution (QQVGA/QVGA/VGA/CIF/SVGA/UXGA) |
 | `/models` | GET | Available Ollama models |
+| `/ping` | GET | Health check (status, IP, uptime) |
 
 ## Boss Mode
 
@@ -437,10 +455,11 @@ The ESP32 exposes these REST endpoints:
 |----------|--------|-------------|
 | `/` | GET | MJPEG stream |
 | `/snapshot` | GET | Single JPEG frame |
-| `/res?val=SVGA|UXGA` | GET | Change camera resolution |
+| `/res?val=QQVGA|QVGA|VGA|CIF|SVGA|UXGA` | GET | Change camera resolution |
 | `/led?state=on|off` | GET | Toggle built-in LED |
 | `/flash?count=N` | GET | Flash LED N times (1-20) |
-| `/telemetry` | GET | JSON: heap, uptime, RSSI, resolution, PSRAM, temperature |
+| `/telemetry` | GET | JSON: heap, uptime, RSSI, IP, resolution, PSRAM, temperature |
+| `/ping` | GET | Health check: status, IP, uptime |
 | `/dashboard` | GET | Full web dashboard |
 
 ## Troubleshooting
@@ -458,6 +477,9 @@ The ESP32 exposes these REST endpoints:
 | QR code not detected | Code too small or blurry | Hold QR code closer to the camera |
 | `vision_llm.py` cannot connect to Ollama | Ollama not running | Run `ollama serve` and verify with `ollama list` |
 | Vision model slow | Large model on CPU | Use a smaller model like `llava:7b` or `minicpm-v`; increase analysis interval |
+| Camera init fails repeatedly | PSRAM or power issue | Firmware auto-retries with VGA; check power supply |
+| `raw_view.py` reconnects slowly | Network latency | Exponential backoff retries with up to 3 attempts |
+| Need to test connectivity | Quick check | Run `python stream_test.py http://IP/` |
 
 ## Project Structure
 
@@ -472,25 +494,30 @@ The ESP32 exposes these REST endpoints:
 ├── test/                    # PlatformIO test runner
 ├── testing/                 # Manual test documentation
 ├── include/                 # C++ firmware headers
-│   ├── camera_utils.h       # Camera init, resolution switching
+│   ├── camera_utils.h       # Camera init, resolution switching (QQVGA–UXGA)
 │   ├── wifi_manager.h       # WiFi connect with auto-reconnect
 │   ├── ota_manager.h        # Over-the-air updates
-│   ├── web_server.h         # HTTP server + all API handlers
+│   ├── web_server.h         # HTTP server + all API handlers (incl. /ping)
 │   └── dashboard_html.h     # Embedded web dashboard HTML
 ├── src/                     # Python host apps + firmware source
 │   ├── app.py               # FastAPI server (Edge Intelligence Platform)
 │   ├── raw_view.py          # Feature-rich Python viewer
 │   ├── vision_llm.py        # Live feed → Ollama vision LLM
+│   ├── stream_test.py       # Connectivity test script
 │   ├── index.html           # Web dashboard frontend
 │   ├── config.py            # Your local IP (gitignored)
 │   ├── config.example.py    # Template — copy to config.py & set IP
 │   ├── config.h             # WiFi credentials (gitignored)
 │   ├── config.example.h     # Template — copy to config.h & set WiFi
-│   └── main.cpp             # ESP32 firmware entry point
+│   └── main.cpp             # ESP32 firmware entry point (with diagnostics)
 └── esp32-s3/                # Older project version (reference)
-    ├── app.py
-    ├── raw_view.py
-    ├── vision_llm.py
+    ├── app.py               # FastAPI server (v1.0.0)
+    ├── raw_view.py          # Legacy viewer
+    ├── vision_llm.py        # Legacy vision client
+    ├── stream_test.py       # Connectivity test
+    ├── Makefile              # Common dev commands
+    ├── .dockerignore         # Docker build exclusions
+    ├── requirements.txt      # Python dependencies
     ├── index.html
     ├── platformio.ini
     ├── include/             # C++ headers (identical to root include/)
