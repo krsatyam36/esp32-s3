@@ -403,7 +403,8 @@ class Viewer:
             if self.recorder.recording:
                 self.recorder.stop()
             else:
-                print("Press 'r' again to start recording after frame arrives")
+                self.recorder.recording = True
+                print("Recording will start on next frame...")
         elif key == ord("1"):
             self.client.set_resolution("SVGA")
         elif key == ord("2"):
