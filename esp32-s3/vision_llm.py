@@ -15,9 +15,11 @@ import base64
 import threading
 import requests
 from io import BytesIO
-from config import ESP32_IP
+import config as _config
 
-BASE_URL = ESP32_IP.rstrip("/")
+def get_base_url() -> str:
+    return _config.ESP32_IP.rstrip("/")
+
 OLLAMA_URL = "http://localhost:11434"
 
 # Vision-capable models available locally
@@ -167,7 +169,7 @@ def main():
     print("Connecting to stream...\n")
 
     try:
-        stream = urllib.request.urlopen(f"{BASE_URL}/", timeout=10)
+        stream = urllib.request.urlopen(f"{get_base_url()}/", timeout=10)
     except Exception as e:
         print(f"Failed to connect: {e}")
         return
@@ -207,7 +209,7 @@ def main():
             data = stream.read(4096)
             if not data:
                 print("Reconnecting...")
-                stream = urllib.request.urlopen(f"{BASE_URL}/", timeout=10)
+                stream = urllib.request.urlopen(f"{get_base_url()}/", timeout=10)
                 continue
 
             buffer.feed(data)
@@ -324,4 +326,10 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM Client")
+    parser.add_argument("--ip", default=None, help="ESP32 IP address (overrides config.py)")
+    args = parser.parse_args()
+    if args.ip:
+        _config.ESP32_IP = args.ip
     main()

@@ -27,13 +27,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel
 
-from config import ESP32_IP
+import config as _config
 
 # ──────────────────────────────────────────────
 #  Configuration
 # ──────────────────────────────────────────────
 
-BASE_URL = ESP32_IP.rstrip("/")
+def get_base_url() -> str:
+    return _config.ESP32_IP.rstrip("/")
+
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:latest")
 ANALYSIS_INTERVAL = float(os.environ.get("ANALYSIS_INTERVAL", "5"))
@@ -56,7 +58,7 @@ class ESP32Client:
     def get_telemetry(self) -> dict:
         return self.send_command("/telemetry")
 
-esp32 = ESP32Client(BASE_URL)
+esp32 = ESP32Client(get_base_url())
 
 # ──────────────────────────────────────────────
 #  MJPEG Stream Buffer (self-healing)
@@ -241,7 +243,7 @@ class OllamaAnalyzer:
 #  Instantiate capture & analyzer
 # ──────────────────────────────────────────────
 
-camera = CameraCapture(BASE_URL + "/")
+camera = CameraCapture(get_base_url() + "/")
 analyzer = OllamaAnalyzer(camera=camera, model=OLLAMA_MODEL, interval=ANALYSIS_INTERVAL)
 
 # ──────────────────────────────────────────────
@@ -264,7 +266,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup():
-    print(f"Connecting to ESP32 at {BASE_URL} ...")
+    print(f"Connecting to ESP32 at {get_base_url()} ...")
     camera.start()
     analyzer.start()
     print(f"Streaming at http://localhost:8000")
@@ -421,7 +423,7 @@ async def health():
     }
     # Check ESP32
     try:
-        resp = urllib.request.urlopen(f"{BASE_URL}/telemetry", timeout=3)
+        resp = urllib.request.urlopen(f"{get_base_url()}/telemetry", timeout=3)
         if resp.status == 200:
             status["esp32"]["connected"] = True
     except Exception as e:
