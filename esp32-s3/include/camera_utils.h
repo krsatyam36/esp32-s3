@@ -79,6 +79,10 @@ bool setResolution(framesize_t size) {
 
 const char* resolutionToString(framesize_t fs) {
     switch (fs) {
+        case FRAMESIZE_QQVGA: return "QQVGA";
+        case FRAMESIZE_QVGA:  return "QVGA";
+        case FRAMESIZE_VGA:   return "VGA";
+        case FRAMESIZE_CIF:   return "CIF";
         case FRAMESIZE_SVGA:  return "SVGA";
         case FRAMESIZE_UXGA:  return "UXGA";
         default:              return "OTHER";
