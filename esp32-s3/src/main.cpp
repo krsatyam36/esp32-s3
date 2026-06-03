@@ -13,9 +13,13 @@ void setup() {
     delay(1000);
 
     Serial.println("\n=== XIAO ESP32S3 Sense Camera ===");
+    Serial.printf("Chip: %s Rev:%d Cores:%d\n",
+        ESP.getChipModel(), ESP.getChipRevision(), ESP.getChipCores());
+    Serial.printf("Free heap: %u PSRAM: %s\n",
+        ESP.getFreeHeap(), psramFound() ? "OK" : "MISSING");
 
     if (!initCamera()) {
-        Serial.println("Camera init failed! Halting.");
+        Serial.println("FATAL: Camera init failed after all retries. Halting.");
         return;
     }
 
@@ -25,7 +29,7 @@ void setup() {
 
     startWebServer();
 
-    Serial.println("System ready!");
+    Serial.printf("System ready! Stream at: http://%s/\n", WiFi.localIP().toString().c_str());
 }
 
 void loop() {
