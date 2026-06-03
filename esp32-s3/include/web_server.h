@@ -100,7 +100,11 @@ static esp_err_t resolution_handler(httpd_req_t *req) {
     }
 
     framesize_t fs;
-    if (strcmp(val, "SVGA") == 0) fs = FRAMESIZE_SVGA;
+    if (strcmp(val, "QQVGA") == 0) fs = FRAMESIZE_QQVGA;
+    else if (strcmp(val, "QVGA") == 0) fs = FRAMESIZE_QVGA;
+    else if (strcmp(val, "VGA") == 0) fs = FRAMESIZE_VGA;
+    else if (strcmp(val, "CIF") == 0) fs = FRAMESIZE_CIF;
+    else if (strcmp(val, "SVGA") == 0) fs = FRAMESIZE_SVGA;
     else if (strcmp(val, "UXGA") == 0) fs = FRAMESIZE_UXGA;
     else {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid resolution");
