@@ -22,6 +22,19 @@
 
 static framesize_t current_resolution = FRAMESIZE_UXGA;
 
+static bool initCameraWithConfig(camera_config_t& config) {
+    esp_err_t err = esp_camera_init(&config);
+    if (err != ESP_OK) {
+        Serial.printf("Camera init failed: error=0x%x psram=%s frame=%d fb_count=%d\n",
+            err, psramFound() ? "yes" : "no", config.frame_size, config.fb_count);
+        return false;
+    }
+    current_resolution = config.frame_size;
+    Serial.printf("Camera initialized: resolution=%s fb_count=%d\n",
+        resolutionToString(current_resolution), config.fb_count);
+    return true;
+}
+
 bool initCamera() {
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
@@ -44,25 +57,24 @@ bool initCamera() {
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
+    config.jpeg_quality = 12;
+    config.fb_count = 1;
+    config.frame_size = FRAMESIZE_SVGA;
 
-    if (psramFound()) {
-        config.frame_size = FRAMESIZE_UXGA;
-        config.jpeg_quality = 10;
-        config.fb_count = 2;
-    } else {
-        config.frame_size = FRAMESIZE_SVGA;
-        config.jpeg_quality = 12;
-        config.fb_count = 1;
-    }
-    current_resolution = config.frame_size;
+    Serial.printf("PSRAM: %s\n", psramFound() ? "FOUND" : "NOT FOUND");
 
-    esp_err_t err = esp_camera_init(&config);
-    if (err != ESP_OK) {
-        Serial.printf("Camera init failed with error 0x%x\n", err);
-        return false;
-    }
-    Serial.println("Camera initialized");
-    return true;
+    if (initCameraWithConfig(config)) return true;
+
+    // Retry with minimal config
+    Serial.println("Retrying with VGA / single buffer...");
+    config.frame_size = FRAMESIZE_VGA;
+    config.jpeg_quality = 15;
+    config.fb_count = 1;
+
+    if (initCameraWithConfig(config)) return true;
+
+    Serial.println("All camera init attempts failed.");
+    return false;
 }
 
 bool setResolution(framesize_t size) {
