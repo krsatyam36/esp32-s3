@@ -573,6 +573,9 @@ def print_help():
  r    - Toggle recording
  1    - Resolution: SVGA (800x600)
  2    - Resolution: UXGA (1600x1200)
+ 3    - Resolution: VGA (640x480)
+ 4    - Resolution: QVGA (320x240)
+ 5    - Resolution: QQVGA (160x120)
  f    - Toggle face detection
  z    - Toggle QR code reader
  m    - Toggle motion detection
