@@ -449,9 +449,21 @@ async def index():
 # ──────────────────────────────────────────────
 
 if __name__ == "__main__":
+    import argparse
     import uvicorn
 
-    port = int(os.environ.get("PORT", "8000"))
+    parser = argparse.ArgumentParser(description="ESP32-S3 FastAPI Server")
+    parser.add_argument("--ip", default=None, help="ESP32 IP address")
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")), help="Server port")
+    parser.add_argument("--ollama-url", default=os.environ.get("OLLAMA_URL", "http://localhost:11434"), help="Ollama server URL")
+    parser.add_argument("--model", default=os.environ.get("OLLAMA_MODEL", "gemma3:latest"), help="Vision model")
+    args = parser.parse_args()
+
+    if args.ip:
+        import config
+        config.ESP32_IP = args.ip
+
+    port = args.port
     uvicorn.run(
         "app:app",
         host="0.0.0.0",
