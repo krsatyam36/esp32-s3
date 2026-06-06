@@ -1,4 +1,4 @@
-.PHONY: viewer server vision test
+.PHONY: viewer server vision test check upload ota monitor
 
 # ESP32 IP (override with ESP_IP=...)
 ESP_IP ?= http://192.168.1.X/
@@ -18,6 +18,10 @@ vision:
 ## Connectivity test
 test:
 	python src/stream_test.py $(ESP_IP)
+
+## Validate setup (dependencies + config)
+check:
+	python src/check_deps.py
 
 ## Upload firmware via PlatformIO
 upload:
