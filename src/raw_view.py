@@ -110,6 +110,9 @@ class FrameAnalyzer:
         self.qr_detector = cv2.QRCodeDetector()
         self.prev_gray = None
         self.motion_threshold = 5000
+        self.trail_points: list[tuple[int, int]] = []
+        self.max_trail = 30
+        self.trail_enabled = True
 
     def detect_faces(self, frame: np.ndarray) -> list:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -150,10 +153,27 @@ class FrameAnalyzer:
 
     def draw_motion_contours(self, frame: np.ndarray, thresh: np.ndarray):
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        centers = []
         for c in contours:
             if cv2.contourArea(c) > self.motion_threshold:
                 x, y, w, h = cv2.boundingRect(c)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                centers.append((x + w // 2, y + h // 2))
+
+        if self.trail_enabled and centers:
+            cx = int(sum(p[0] for p in centers) / len(centers))
+            cy = int(sum(p[1] for p in centers) / len(centers))
+            self.trail_points.append((cx, cy))
+            if len(self.trail_points) > self.max_trail:
+                self.trail_points.pop(0)
+
+        if self.trail_enabled and len(self.trail_points) > 1:
+            for i in range(1, len(self.trail_points)):
+                alpha = i / len(self.trail_points)
+                thickness = max(1, int(alpha * 3))
+                color = (0, int(255 * alpha), int(255 * (1 - alpha)))
+                cv2.line(frame, self.trail_points[i - 1], self.trail_points[i], color, thickness, cv2.LINE_AA)
+            cv2.circle(frame, self.trail_points[-1], 4, (0, 255, 255), -1)
 
 # ============================================================
 #  RECORDER
@@ -393,6 +413,8 @@ class Viewer:
             badges.append("GRID")
         if self.show_crosshair:
             badges.append("CROSS")
+        if self.analyzer.trail_enabled:
+            badges.append("TRAIL")
         ModernHUD.top_bar(frame, f"FPS: {self.fps.smooth_fps:.1f}", badges)
 
         if self.show_grid:
@@ -446,6 +468,9 @@ class Viewer:
             self.client.toggle_led("on" if self.led_on else "off")
         elif key == ord("L"):
             self.client.flash_led(5)
+        elif key == ord("p"):
+            self.analyzer.trail_enabled = not self.analyzer.trail_enabled
+            print(f"Motion trail: {'ON' if self.analyzer.trail_enabled else 'OFF'}")
 
     def _capture_loop(self):
         """Background thread dedicated entirely to network streaming."""
@@ -588,9 +613,10 @@ def print_help():
  o    - Rotate 90° CW (cycles 0/90/180/270)
  g    - Toggle rule-of-thirds grid
  c    - Toggle center crosshair
- l    - Toggle LED on/off
- L    - Flash LED (shift+L)
- h    - Show this help
+    l    - Toggle LED on/off
+    L    - Flash LED (shift+L)
+    p    - Toggle motion trail overlay
+    h    - Show this help
  Dashboard: {BASE_URL}/dashboard
 ========================================
 """)
