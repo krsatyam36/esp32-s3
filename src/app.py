@@ -21,6 +21,7 @@ import json
 import math
 import os
 import platform
+import signal
 import subprocess
 import threading
 import time
@@ -29,12 +30,6 @@ import urllib.error
 import http.client
 import socket
 import sys
-from datetime import datetime, timezone
-from collections import deque
-
-import cv2
-import numpy as np
-import requests
 import uuid
 
 from fastapi import FastAPI, Request, Query, HTTPException
@@ -647,8 +642,19 @@ async def index():
 #  Entrypoint
 # ──────────────────────────────────────────────
 
+def _signal_handler(sig, frame):
+    print(f"\n[shutdown] Signal {sig} received, stopping...")
+    camera.stop()
+    analyzer.stop()
+    vector_search.stop()
+    gatekeeper.stop()
+    sys.exit(0)
+
 if __name__ == "__main__":
     import uvicorn
+
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
 
     _parser = argparse.ArgumentParser(description="ESP32-S3 Edge Intelligence Platform")
     _parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")), help="Server port")
