@@ -20,6 +20,7 @@ import base64
 import json
 import math
 import os
+import platform
 import subprocess
 import threading
 import time
@@ -27,6 +28,7 @@ import urllib.request
 import urllib.error
 import http.client
 import socket
+import sys
 from datetime import datetime, timezone
 from collections import deque
 
