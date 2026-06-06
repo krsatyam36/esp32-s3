@@ -5,11 +5,10 @@ Usage:
     python stream_test.py http://192.168.1.X/
 """
 
-import sys
-import urllib.request
-import urllib.error
 import json
-import time
+import sys
+import urllib.error
+import urllib.request
 
 
 def test_endpoint(base_url: str, name: str, path: str, expect_json=False) -> bool:
@@ -24,9 +23,8 @@ def test_endpoint(base_url: str, name: str, path: str, expect_json=False) -> boo
                 body = resp.read()
                 print(f"  [OK] {name} ({url}) -> {len(body)} bytes")
             return True
-        else:
-            print(f"  [FAIL] {name} -> HTTP {resp.status}")
-            return False
+        print(f"  [FAIL] {name} -> HTTP {resp.status}")
+        return False
     except Exception as e:
         print(f"  [FAIL] {name} -> {e}")
         return False
@@ -38,7 +36,7 @@ def main():
         sys.exit(1)
 
     base_url = sys.argv[1].rstrip("/")
-    print(f"\n=== ESP32-S3 Connectivity Test ===\n")
+    print("\n=== ESP32-S3 Connectivity Test ===\n")
     print(f"Target: {base_url}\n")
 
     results = []
@@ -48,7 +46,7 @@ def main():
     results.append(test_endpoint(base_url, "Ping", "/ping", expect_json=True))
     results.append(test_endpoint(base_url, "Diag", "/diag", expect_json=True))
 
-    print(f"\n--- Results ---")
+    print("\n--- Results ---")
     passed = sum(results)
     total = len(results)
     print(f"{passed}/{total} endpoints passed")

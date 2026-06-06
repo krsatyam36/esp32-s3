@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import copy
-import logging
 import threading
 import time
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel
 
@@ -31,7 +29,8 @@ class SmartAlert:
         if (now - self.last_triggered) < self.rule.cooldown:
             return False
         matches = [
-            o for o in objects
+            o
+            for o in objects
             if o.get("class") == self.rule.class_name
             and o.get("confidence", 0) >= self.rule.min_confidence
         ]
@@ -47,10 +46,14 @@ class AlertManager:
         self._history: deque[dict[str, object]] = deque(maxlen=200)
         self._lock = threading.Lock()
         self._default_rules = [
-            AlertRule(name="person_detected", class_name="person", min_confidence=0.6, cooldown=10.0),
+            AlertRule(
+                name="person_detected", class_name="person", min_confidence=0.6, cooldown=10.0
+            ),
             AlertRule(name="vehicle_nearby", class_name="car", min_confidence=0.5, cooldown=30.0),
             AlertRule(name="animal_spotted", class_name="dog", min_confidence=0.5, cooldown=60.0),
-            AlertRule(name="phone_in_use", class_name="cell phone", min_confidence=0.4, cooldown=15.0),
+            AlertRule(
+                name="phone_in_use", class_name="cell phone", min_confidence=0.4, cooldown=15.0
+            ),
         ]
         for r in self._default_rules:
             self._alerts.append(SmartAlert(r))
@@ -61,13 +64,17 @@ class AlertManager:
             for alert in self._alerts:
                 if alert.check(objects):
                     triggered.append(alert.rule.name)
-                    self._history.append({
-                        "time": time.time(),
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "rule": alert.rule.name,
-                        "class": alert.rule.class_name,
-                        "objects": [o for o in objects if o.get("class") == alert.rule.class_name],
-                    })
+                    self._history.append(
+                        {
+                            "time": time.time(),
+                            "timestamp": datetime.now(UTC).isoformat(),
+                            "rule": alert.rule.name,
+                            "class": alert.rule.class_name,
+                            "objects": [
+                                o for o in objects if o.get("class") == alert.rule.class_name
+                            ],
+                        }
+                    )
         return triggered
 
     def get_rules(self) -> list[AlertRule]:

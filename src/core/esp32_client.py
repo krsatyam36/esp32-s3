@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 import json
-import logging
 import urllib.error
 import urllib.parse
 import urllib.request
 
-import requests
 from pydantic import BaseModel
 
 try:
     from src.config import ESP32_IP as _IP
+
     _BASE = _IP.rstrip("/")
 except (ImportError, NameError):
     import os
+
     _BASE = os.environ.get("ESP32_IP", "http://192.168.1.X/").rstrip("/")
 
 BASE_URL = _BASE

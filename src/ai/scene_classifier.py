@@ -1,24 +1,38 @@
 from __future__ import annotations
 
-import logging
 import threading
 import time
+import typing
 from collections import deque
 
 import cv2
 import numpy as np
-
-import typing
 
 if typing.TYPE_CHECKING:
     from src.core.camera_capture import CameraCapture
 
 
 SCENE_CATEGORIES = [
-    "indoor", "outdoor", "office", "classroom", "laboratory",
-    "kitchen", "living_room", "street", "parking_lot", "nature",
-    "night", "day", "low_light", "bright", "crowded", "empty",
-    "workshop", "server_room", "warehouse", "corridor"
+    "indoor",
+    "outdoor",
+    "office",
+    "classroom",
+    "laboratory",
+    "kitchen",
+    "living_room",
+    "street",
+    "parking_lot",
+    "nature",
+    "night",
+    "day",
+    "low_light",
+    "bright",
+    "crowded",
+    "empty",
+    "workshop",
+    "server_room",
+    "warehouse",
+    "corridor",
 ]
 
 
@@ -47,10 +61,12 @@ class SceneClassifier:
                         scene = self._classify(img)
                         with self._lock:
                             self._current_scene = scene
-                            self._scene_history.append({
-                                "time": time.time(),
-                                "scene": scene,
-                            })
+                            self._scene_history.append(
+                                {
+                                    "time": time.time(),
+                                    "scene": scene,
+                                }
+                            )
                 except Exception:
                     pass
             time.sleep(1)
@@ -66,7 +82,6 @@ class SceneClassifier:
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         mean_hue = hsv[:, :, 0].mean()
         mean_sat = hsv[:, :, 1].mean()
-        mean_val = hsv[:, :, 2].mean()
         saturation_pixels = (hsv[:, :, 1] > 50).mean()
         if mean_brightness < 40 and std_brightness < 20:
             return "night"

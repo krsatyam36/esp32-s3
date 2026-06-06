@@ -83,7 +83,7 @@ class TestStreamTestFunctions:
 
     @patch("src.stream_test.test_endpoint")
     def test_main_some_fail(self, mock_test):
-        mock_test.side_effect = [True, True, False, True]
+        mock_test.side_effect = [True, True, True, True, False]
         import sys
         with patch.object(sys, "argv", ["stream_test.py", "http://192.168.1.100/"]):
             from src.stream_test import main

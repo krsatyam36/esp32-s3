@@ -4,14 +4,15 @@ Checks all dependencies and configuration are correct.
 """
 
 import importlib
-import os
 import subprocess
-import sys
 from pathlib import Path
 
-
 REQUIRED_PYTHON = [
-    "cv2", "numpy", "requests", "fastapi", "uvicorn",
+    "cv2",
+    "numpy",
+    "requests",
+    "fastapi",
+    "uvicorn",
 ]
 
 OPTIONAL_PYTHON = [
@@ -96,36 +97,34 @@ def main():
 
     config_py = root / "src" / "config.py"
     if config_py.exists():
-        print(f"  [OK] src/config.py found")
+        print("  [OK] src/config.py found")
         try:
             with open(config_py) as f:
                 content = f.read()
             if "192.168" in content:
-                print(f"  [!!] src/config.py still has default IP (192.168.1.X)")
+                print("  [!!] src/config.py still has default IP (192.168.1.X)")
             else:
-                print(f"  [OK] src/config.py has custom IP configured")
+                print("  [OK] src/config.py has custom IP configured")
         except Exception:
             pass
     else:
-        print(f"  [FAIL] src/config.py not found! Copy from src/config.example.py")
+        print("  [FAIL] src/config.py not found! Copy from src/config.example.py")
 
     dot_env = root / ".env"
     if dot_env.exists():
-        print(f"  [OK] .env file found")
+        print("  [OK] .env file found")
     else:
-        print(f"  [INFO] .env not present — using env vars or config.py")
+        print("  [INFO] .env not present — using env vars or config.py")
 
     config_h = root / "src" / "config.h"
-    config_h2 = root / "src" / "config.h"
-    # Check both locations
     if config_h.exists():
-        print(f"  [OK] src/config.h found")
+        print("  [OK] src/config.h found")
     else:
         alt = root / "include" / "config.h"
         if alt.exists():
-            print(f"  [OK] include/config.h found (legacy location)")
+            print("  [OK] include/config.h found (legacy location)")
         else:
-            print(f"  [FAIL] src/config.h not found! Copy from src/config.example.h")
+            print("  [FAIL] src/config.h not found! Copy from src/config.example.h")
 
     print("\n" + "=" * 56)
     print("  Validation complete.")

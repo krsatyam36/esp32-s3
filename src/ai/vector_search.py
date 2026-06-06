@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import base64
-import io
-import logging
 import threading
 import time
-from datetime import datetime, timezone
+import typing
+from datetime import UTC, datetime
 
 import cv2
 import numpy as np
-
-import typing
 
 if typing.TYPE_CHECKING:
     from src.core.camera_capture import CameraCapture
@@ -32,8 +28,11 @@ class VectorSearch:
         self._chroma: typing.Any = None
         try:
             import chromadb
+
             self._chroma = chromadb.Client(
-                chromadb.Settings(anonymized_telemetry=False, is_persistent=True, persist_directory="./chroma_db")
+                chromadb.Settings(
+                    anonymized_telemetry=False, is_persistent=True, persist_directory="./chroma_db"
+                )
             )
             self.collection = self._chroma.get_or_create_collection("frames")
             self._ready_chroma = True
@@ -46,7 +45,7 @@ class VectorSearch:
             return True
         try:
             from sentence_transformers import SentenceTransformer
-            import torch
+
             self._model_name = "clip-ViT-B-32"
             self._encoder = SentenceTransformer(self._model_name)
             self.ready = True
@@ -97,7 +96,7 @@ class VectorSearch:
                 last_id = fid
                 emb = self._encode_image(raw)
                 if emb is not None:
-                    ts = datetime.now(timezone.utc).isoformat()
+                    ts = datetime.now(UTC).isoformat()
                     try:
                         self.collection.add(
                             embeddings=[emb],
@@ -124,13 +123,21 @@ class VectorSearch:
             hits: list[dict[str, object]] = []
             if results.get("ids") and results["ids"][0]:
                 for i, fid in enumerate(results["ids"][0]):
-                    meta = (results.get("metadatas") or [{}])[0].get(i, {}) if isinstance(results.get("metadatas"), list) else {}
-                    dist = (results.get("distances") or [[]])[0][i] if results.get("distances") else 0
-                    hits.append({
-                        "frame_id": meta.get("frame_id", fid),
-                        "timestamp": meta.get("timestamp", ""),
-                        "score": round(1.0 - float(dist), 4),
-                    })
+                    meta = (
+                        (results.get("metadatas") or [{}])[0].get(i, {})
+                        if isinstance(results.get("metadatas"), list)
+                        else {}
+                    )
+                    dist = (
+                        (results.get("distances") or [[]])[0][i] if results.get("distances") else 0
+                    )
+                    hits.append(
+                        {
+                            "frame_id": meta.get("frame_id", fid),
+                            "timestamp": meta.get("timestamp", ""),
+                            "score": round(1.0 - float(dist), 4),
+                        }
+                    )
             return hits
         except Exception:
             return []

@@ -1,17 +1,17 @@
-import cv2
-import urllib.request
-import urllib.error
+import argparse
 import http.client
-import socket
-import numpy as np
-import time
 import json
+import logging
 import os
 import sys
-import argparse
 import threading
-import logging
+import time
+import urllib.error
+import urllib.request
 from datetime import datetime
+
+import cv2
+import numpy as np
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("raw_view")
@@ -20,16 +20,35 @@ parser = argparse.ArgumentParser(description="ESP32-S3 Camera Viewer")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
 args, _ = parser.parse_known_args()
 
+def _auto_discover() -> str:
+    """Auto-discover ESP32 IP via mDNS or network scan."""
+    from discover_esp32 import discover
+    ip = discover(timeout=10)
+    if ip:
+        return f"http://{ip}"
+    print("ERROR: Could not auto-discover ESP32.")
+    print("Make sure the board is powered on and connected to WiFi.")
+    print("Or provide the IP manually: python raw_view.py --ip http://192.168.1.X/")
+    sys.exit(1)
+
+
 if args.ip:
     BASE_URL = args.ip.rstrip("/")
 else:
-    try:
-        from config import ESP32_IP
-        BASE_URL = ESP32_IP.rstrip("/")
-    except ImportError:
-        print("ERROR: No config.py found and no --ip provided.")
-        print("Copy config.example.py to config.py and set your ESP32 IP, or use --ip")
-        sys.exit(1)
+    _env_ip = os.environ.get("ESP32_IP", "").strip()
+    if _env_ip:
+        BASE_URL = _env_ip.rstrip("/")
+    else:
+        try:
+            from config import ESP32_IP
+            BASE_URL = ESP32_IP.rstrip("/")
+            # If still the default placeholder, auto-discover
+            if "192.168.1.X" in BASE_URL:
+                print("Default IP in config.py — auto-discovering...")
+                BASE_URL = _auto_discover()
+        except ImportError:
+            print("No config.py found — auto-discovering...")
+            BASE_URL = _auto_discover()
 SNAPSHOT_DIR = "snapshots"
 RECORDING_DIR = "recordings"
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
@@ -38,6 +57,7 @@ os.makedirs(RECORDING_DIR, exist_ok=True)
 # ============================================================
 #  ESP32 HTTP CLIENT
 # ============================================================
+
 
 class ESP32Client:
     def __init__(self, base_url: str):
@@ -68,14 +88,16 @@ class ESP32Client:
             return resp.read()
         except Exception:
             return None
-            
+
     def get_stream(self):
         # Fail-fast 1.5s timeout prevents the background thread from hanging
         return urllib.request.urlopen(self.base_url + "/", timeout=1.5)
 
+
 # ============================================================
 #  STREAM BUFFER (Self-Healing)
 # ============================================================
+
 
 class StreamBuffer:
     def __init__(self):
@@ -85,9 +107,9 @@ class StreamBuffer:
         self.buffer += data
 
     def get_frame(self) -> np.ndarray | None:
-        a = self.buffer.find(b"\xff\xd8") # Start marker
-        b = self.buffer.find(b"\xff\xd9") # End marker
-        
+        a = self.buffer.find(b"\xff\xd8")  # Start marker
+        b = self.buffer.find(b"\xff\xd9")  # End marker
+
         if a != -1 and b != -1:
             if a < b:
                 # Perfect frame found! Extract it.
@@ -95,16 +117,17 @@ class StreamBuffer:
                 self.buffer = self.buffer[b + 2 :]
                 img = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
                 return img
-            else:
-                # CORRUPTION DETECTED: An 'End' came before a 'Start'.
-                # Delete the corrupted data so the buffer doesn't jam.
-                self.buffer = self.buffer[a:]
-                
+            # CORRUPTION DETECTED: An 'End' came before a 'Start'.
+            # Delete the corrupted data so the buffer doesn't jam.
+            self.buffer = self.buffer[a:]
+
         return None
+
 
 # ============================================================
 #  FRAME ANALYZER (face, QR, motion)
 # ============================================================
+
 
 class FrameAnalyzer:
     def __init__(self):
@@ -150,10 +173,9 @@ class FrameAnalyzer:
         return motion, thresh if motion else None
 
     def draw_face_boxes(self, frame: np.ndarray, faces: list):
-        for (x, y, w, h) in faces:
+        for x, y, w, h in faces:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(frame, "Face", (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.putText(frame, "Face", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
     def draw_motion_contours(self, frame: np.ndarray, thresh: np.ndarray):
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -176,12 +198,21 @@ class FrameAnalyzer:
                 alpha = i / len(self.trail_points)
                 thickness = max(1, int(alpha * 3))
                 color = (0, int(255 * alpha), int(255 * (1 - alpha)))
-                cv2.line(frame, self.trail_points[i - 1], self.trail_points[i], color, thickness, cv2.LINE_AA)
+                cv2.line(
+                    frame,
+                    self.trail_points[i - 1],
+                    self.trail_points[i],
+                    color,
+                    thickness,
+                    cv2.LINE_AA,
+                )
             cv2.circle(frame, self.trail_points[-1], 4, (0, 255, 255), -1)
+
 
 # ============================================================
 #  RECORDER
 # ============================================================
+
 
 class Recorder:
     def __init__(self, output_dir: str):
@@ -216,9 +247,11 @@ class Recorder:
             print(f"Recording saved: {self.filename}")
         self.filename = None
 
+
 # ============================================================
 #  FPS COUNTER
 # ============================================================
+
 
 class FPSCounter:
     def __init__(self):
@@ -233,9 +266,11 @@ class FPSCounter:
         self.smooth_fps = (self.smooth_fps * 0.9) + (fps * 0.1)
         return self.smooth_fps
 
+
 # ============================================================
 #  TELEMETRY DISPLAY
 # ============================================================
+
 
 class TelemetryOverlay:
     def __init__(self, client: ESP32Client):
@@ -273,9 +308,11 @@ class TelemetryOverlay:
             ModernHUD.text_sm(frame, text, 14, cy + 10, color, 0.45, 1)
             cy += line_h
 
+
 # ============================================================
 #  MODERN HUD OVERLAY
 # ============================================================
+
 
 class ModernHUD:
     """Production-grade HUD overlay with dark panels and text shadows."""
@@ -287,22 +324,26 @@ class ModernHUD:
 
     @staticmethod
     def text(frame, text, x, y, color=(255, 255, 255), scale=0.5, thick=1):
-        cv2.putText(frame, text, (x + 1, y + 1), ModernHUD.FONT, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
+        cv2.putText(
+            frame, text, (x + 1, y + 1), ModernHUD.FONT, scale, (0, 0, 0), thick + 1, cv2.LINE_AA
+        )
         cv2.putText(frame, text, (x, y), ModernHUD.FONT, scale, color, thick, cv2.LINE_AA)
 
     @staticmethod
     def text_sm(frame, text, x, y, color=(255, 255, 255), scale=0.45, thick=1):
-        cv2.putText(frame, text, (x + 1, y + 1), ModernHUD.FONT_SM, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
+        cv2.putText(
+            frame, text, (x + 1, y + 1), ModernHUD.FONT_SM, scale, (0, 0, 0), thick + 1, cv2.LINE_AA
+        )
         cv2.putText(frame, text, (x, y), ModernHUD.FONT_SM, scale, color, thick, cv2.LINE_AA)
 
     @staticmethod
     def panel(frame, x, y, w, h, alpha=None):
         if alpha is None:
             alpha = ModernHUD.BG_ALPHA
-        roi = frame[y:y + h, x:x + w]
+        roi = frame[y : y + h, x : x + w]
         bg = np.full_like(roi, (0, 0, 0), dtype=np.uint8)
         blended = cv2.addWeighted(roi, 1 - alpha, bg, alpha, 0)
-        frame[y:y + h, x:x + w] = blended
+        frame[y : y + h, x : x + w] = blended
 
     @staticmethod
     def text_with_bg(frame, text, x, y, color=(255, 255, 255), scale=0.5, thick=1, pad=6):
@@ -369,10 +410,11 @@ class ModernHUD:
 #  MAIN VIEWER (Multi-Threaded & Real-Time Synced)
 # ============================================================
 
+
 class Viewer:
     def __init__(self):
         self.client = ESP32Client(BASE_URL)
-        
+
         # --- NEW: Automatically set SVGA resolution on startup ---
         print("Setting default camera resolution to SVGA (800x600)...")
         self.client.set_resolution("SVGA")
@@ -399,7 +441,7 @@ class Viewer:
 
         # Threading synchronization variables
         self.latest_frame = None
-        self.new_frame_ready = False  
+        self.new_frame_ready = False
         self.frame_lock = threading.Lock()
         self.capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
 
@@ -497,6 +539,7 @@ class Viewer:
         """Background thread dedicated entirely to network streaming.
         Uses exponential backoff with random jitter for reconnection."""
         import random
+
         print(f"Connecting to {BASE_URL}...")
         retry_delay = 1.0
         max_retry = 30.0
@@ -523,9 +566,13 @@ class Viewer:
                                 self.latest_frame = frame
                                 self.new_frame_ready = True
 
-                    except (urllib.error.URLError, ConnectionError,
-                            http.client.IncompleteRead, http.client.RemoteDisconnected,
-                            socket.timeout):
+                    except (
+                        TimeoutError,
+                        urllib.error.URLError,
+                        ConnectionError,
+                        http.client.IncompleteRead,
+                        http.client.RemoteDisconnected,
+                    ):
                         print("Connection lost, reconnecting...")
                         break
                     except Exception as e:
@@ -549,7 +596,7 @@ class Viewer:
         """Main UI Thread: Handles rendering, AI, and OpenCV events."""
         self.capture_thread.start()
         print("UI Thread initialized. Press 'h' for help.\n")
-        
+
         stream_recording = False
 
         while self.running:
@@ -557,7 +604,7 @@ class Viewer:
             with self.frame_lock:
                 if self.new_frame_ready and self.latest_frame is not None:
                     frame = self.latest_frame.copy()
-                    self.new_frame_ready = False 
+                    self.new_frame_ready = False
                 else:
                     frame = None
 
@@ -585,15 +632,19 @@ class Viewer:
             if self.enable_qr:
                 qr_data = self.analyzer.read_qr(frame)
                 if qr_data:
-                    ModernHUD.text_with_bg(frame, f"QR: {qr_data}", 12, frame.shape[0] - 14,
-                                           (255, 0, 255), 0.55, 2)
+                    ModernHUD.text_with_bg(
+                        frame, f"QR: {qr_data}", 12, frame.shape[0] - 14, (255, 0, 255), 0.55, 2
+                    )
 
             if self.enable_motion:
                 motion, thresh = self.analyzer.detect_motion(frame)
                 if motion:
-                    self.analyzer.draw_motion_contours(frame, thresh if thresh is not None else np.zeros_like(frame))
-                    ModernHUD.text_with_bg(frame, "MOTION DETECTED!", frame.shape[1] - 170, 28,
-                                           (0, 0, 255), 0.6, 2)
+                    self.analyzer.draw_motion_contours(
+                        frame, thresh if thresh is not None else np.zeros_like(frame)
+                    )
+                    ModernHUD.text_with_bg(
+                        frame, "MOTION DETECTED!", frame.shape[1] - 170, 28, (0, 0, 255), 0.6, 2
+                    )
 
             if self.show_telemetry:
                 self.telemetry.update()
@@ -617,17 +668,19 @@ class Viewer:
 
             title = f"ESP32-S3 Camera Viewer — {w}x{h}"
             cv2.imshow(title, frame)
-            
+
             key = cv2.waitKey(1) & 0xFF
             self.handle_keys(key)
 
         self.recorder.stop()
         cv2.destroyAllWindows()
         print("Viewer closed.")
-        
+
+
 # ============================================================
 #  HELP
 # ============================================================
+
 
 def print_help():
     print("""
@@ -655,6 +708,7 @@ def print_help():
  Dashboard: {BASE_URL}/dashboard
 ========================================
 """)
+
 
 if __name__ == "__main__":
     print_help()

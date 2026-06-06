@@ -1,6 +1,6 @@
 """Tests for StreamBuffer JPEG boundary detection."""
 
-from src.app import StreamBuffer
+from src.core.stream_buffer import StreamBuffer
 
 
 class TestStreamBuffer:

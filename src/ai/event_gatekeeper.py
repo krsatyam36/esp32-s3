@@ -1,33 +1,50 @@
 from __future__ import annotations
 
-import logging
 import os
 import threading
 import time
+import typing
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import cv2
 import numpy as np
 
-import typing
-
 if typing.TYPE_CHECKING:
-    from src.ai.ollama_analyzer import OllamaAnalyzer
     from src.ai.object_counter import ObjectCounter
-    from src.ai.timeline_engine import TimelineEngine
+    from src.ai.ollama_analyzer import OllamaAnalyzer
     from src.ai.smart_alert import AlertManager
+    from src.ai.timeline_engine import TimelineEngine
     from src.core.camera_capture import CameraCapture
 
 
 YOLO_CONF = float(os.environ.get("YOLO_CONFIDENCE", "0.35"))
 
 TARGET_CLASSES: dict[int, str] = {
-    0: "person", 1: "bicycle", 2: "car", 3: "motorcycle", 5: "bus",
-    6: "train", 7: "truck", 16: "dog", 17: "cat", 32: "sports ball",
-    39: "bottle", 41: "cup", 43: "knife", 44: "spoon", 47: "mouse",
-    56: "chair", 57: "couch", 62: "tv", 63: "laptop", 64: "mouse",
-    67: "cell phone", 73: "book", 74: "clock", 76: "scissors",
+    0: "person",
+    1: "bicycle",
+    2: "car",
+    3: "motorcycle",
+    5: "bus",
+    6: "train",
+    7: "truck",
+    16: "dog",
+    17: "cat",
+    32: "sports ball",
+    39: "bottle",
+    41: "cup",
+    43: "knife",
+    44: "spoon",
+    47: "mouse",
+    56: "chair",
+    57: "couch",
+    62: "tv",
+    63: "laptop",
+    64: "mouse",
+    67: "cell phone",
+    73: "book",
+    74: "clock",
+    76: "scissors",
     77: "teddy bear",
 }
 
@@ -54,6 +71,7 @@ class EventGatekeeper:
         self._alert_manager = alert_manager
         try:
             from ultralytics import YOLO
+
             self.model = YOLO("yolov8n.pt")
             self.ready = True
         except Exception as e:
@@ -102,7 +120,7 @@ class EventGatekeeper:
                 event = {
                     "frame_id": fid,
                     "time": time.time(),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "objects": objs,
                 }
                 with self._lock:

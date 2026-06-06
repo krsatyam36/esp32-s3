@@ -71,7 +71,7 @@ class TestSceneClassifier:
         assert self.classifier.history == []
 
     def test_scene_categories_defined(self):
-        from src.app import SCENE_CATEGORIES
+        from src.ai.scene_classifier import SCENE_CATEGORIES
         assert "indoor" in SCENE_CATEGORIES
         assert "outdoor" in SCENE_CATEGORIES
         assert "night" in SCENE_CATEGORIES

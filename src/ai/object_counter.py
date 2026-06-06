@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import logging
 import threading
 import time
 
@@ -21,11 +20,13 @@ class ObjectCounter:
             for obj in objects:
                 label: str = str(obj.get("class", "unknown"))
                 self._counts[label] = self._counts.get(label, 0) + 1
-            self._per_frame.append({
-                "time": time.time(),
-                "count": len(objects),
-                "objects": objects,
-            })
+            self._per_frame.append(
+                {
+                    "time": time.time(),
+                    "count": len(objects),
+                    "objects": objects,
+                }
+            )
 
     def get_counts(self) -> dict[str, int]:
         with self._lock:

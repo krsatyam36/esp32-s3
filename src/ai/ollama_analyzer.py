@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-import asyncio
 import base64
-import io
-import json
-import logging
 import os
 import subprocess
 import threading
 import time
 
-import cv2
-import numpy as np
 import requests
 
 from src.core.camera_capture import CameraCapture
-
 
 OLLAMA_URL: str = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
@@ -112,9 +105,7 @@ class OllamaAnalyzer:
                     "images": [b64],
                     "stream": False,
                 }
-                resp = self._session.post(
-                    f"{OLLAMA_URL}/api/generate", json=payload, timeout=30
-                )
+                resp = self._session.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=30)
                 self.last_latency = time.time() - t0
                 if resp.status_code == 200:
                     text: str = resp.json().get("response", "").strip()

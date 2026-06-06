@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import base64 as b64
-import io
-import logging
 import threading
 import time
+import typing
 
 import cv2
 import numpy as np
-
-import typing
 
 if typing.TYPE_CHECKING:
     from src.core.camera_capture import CameraCapture
@@ -50,10 +46,15 @@ class MotionHeatmap:
                                     self._heatmap = thresh.astype(np.float32)
                                 else:
                                     if self._heatmap.shape != thresh.shape:
-                                        self._heatmap = cv2.resize(self._heatmap, (thresh.shape[1], thresh.shape[0]))
+                                        self._heatmap = cv2.resize(
+                                            self._heatmap, (thresh.shape[1], thresh.shape[0])
+                                        )
                                     self._heatmap = cv2.addWeighted(
-                                        self._heatmap, self.decay,
-                                        thresh.astype(np.float32), 1 - self.decay, 0
+                                        self._heatmap,
+                                        self.decay,
+                                        thresh.astype(np.float32),
+                                        1 - self.decay,
+                                        0,
                                     )
                         self._prev_gray = gray
                 except Exception:
@@ -64,10 +65,13 @@ class MotionHeatmap:
         with self._lock:
             if self._heatmap is None:
                 return None
-            normalized = cv2.normalize(self._heatmap, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            normalized = cv2.normalize(self._heatmap, None, 0, 255, cv2.NORM_MINMAX).astype(
+                np.uint8
+            )
             colored = cv2.applyColorMap(normalized, cv2.COLORMAP_JET)
             _, buffer = cv2.imencode(".jpg", colored)
             import base64 as _b64
+
             return _b64.b64encode(buffer).decode("utf-8")
 
     def reset(self) -> None:

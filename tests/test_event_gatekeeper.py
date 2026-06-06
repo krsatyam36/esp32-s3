@@ -40,7 +40,7 @@ class TestEventGatekeeper:
         assert gatekeeper.ready is True
 
     def test_target_classes_defined(self):
-        from src.app import TARGET_CLASSES
+        from src.ai.event_gatekeeper import TARGET_CLASSES
         assert 0 in TARGET_CLASSES
         assert TARGET_CLASSES[0] == "person"
         assert 2 in TARGET_CLASSES

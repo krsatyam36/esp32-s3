@@ -1,10 +1,8 @@
 """Utility endpoints for the Edge Intelligence Platform."""
 
 import os
-import time
 import platform
-import subprocess
-from typing import Any
+import time
 
 from fastapi import APIRouter
 
@@ -19,7 +17,11 @@ async def ping():
 @router.get("/env")
 async def env_info():
     safe_keys = ["PATH", "HOME", "USER", "SHELL", "LANG", "PYTHON_VERSION"]
-    env = {k: v for k, v in os.environ.items() if k in safe_keys or k.startswith("ESP32") or k.startswith("OLLAMA")}
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k in safe_keys or k.startswith("ESP32") or k.startswith("OLLAMA")
+    }
     return {"environment": env}
 
 
@@ -42,5 +44,10 @@ async def disk_info():
         total = stat.f_frsize * stat.f_blocks
         free = stat.f_frsize * stat.f_bfree
         used = total - free
-        return {"total_bytes": total, "free_bytes": free, "used_bytes": used, "usage_pct": round(used / total * 100, 1) if total else 0}
+        return {
+            "total_bytes": total,
+            "free_bytes": free,
+            "used_bytes": used,
+            "usage_pct": round(used / total * 100, 1) if total else 0,
+        }
     return {"info": "disk stats not available on this platform"}

@@ -1,12 +1,5 @@
 from __future__ import annotations
 
-import io
-import logging
-from collections import deque
-
-import cv2
-import numpy as np
-
 
 class StreamBuffer:
     def __init__(self) -> None:

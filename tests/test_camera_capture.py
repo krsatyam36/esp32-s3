@@ -1,7 +1,8 @@
 """Tests for CameraCapture threading helpers."""
 
 import threading
-from src.app import CameraCapture, StreamBuffer
+from src.app import CameraCapture
+from src.core.stream_buffer import StreamBuffer
 
 
 class TestCameraCapture:

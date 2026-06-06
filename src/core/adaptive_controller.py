@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import logging
 import os
 import threading
 import time
+import typing
 from collections import deque
 from enum import Enum
-
-import typing
 
 if typing.TYPE_CHECKING:
     from src.ai.ollama_analyzer import OllamaAnalyzer
@@ -69,12 +67,24 @@ class AdaptiveController:
             try:
                 tele = self.esp32.get_telemetry()
                 rssi_str = tele.get("rssi", "0")
-                self.rssi = int(rssi_str) if isinstance(rssi_str, (int, str)) and str(rssi_str).lstrip("-").isdigit() else 0
+                self.rssi = (
+                    int(rssi_str)
+                    if isinstance(rssi_str, (int, str)) and str(rssi_str).lstrip("-").isdigit()
+                    else 0
+                )
                 self.buffer_depth_val = self.camera.buffer_depth
                 self.latency = self.analyzer.last_latency
-                if self.rssi > self.rssi_throttle and self.latency < self.latency_throttle and self.buffer_depth_val < self.buffer_depth_throttle:
+                if (
+                    self.rssi > self.rssi_throttle
+                    and self.latency < self.latency_throttle
+                    and self.buffer_depth_val < self.buffer_depth_throttle
+                ):
                     target = self.MODE_NORMAL
-                elif self.rssi < self.rssi_emergency or self.latency > self.latency_emergency or self.buffer_depth_val > self.buffer_depth_emergency:
+                elif (
+                    self.rssi < self.rssi_emergency
+                    or self.latency > self.latency_emergency
+                    or self.buffer_depth_val > self.buffer_depth_emergency
+                ):
                     target = self.MODE_EMERGENCY
                 else:
                     target = self.MODE_THROTTLED
@@ -94,13 +104,15 @@ class AdaptiveController:
                         self.esp32.send_command("/res?val=SVGA")
                         last_res_check = time.time()
                         self.last_action = "SVGA + 30s interval"
-                self._history.append({
-                    "time": time.time(),
-                    "mode": self.mode,
-                    "rssi": self.rssi,
-                    "latency": self.latency,
-                    "buffer_depth": self.buffer_depth_val,
-                })
+                self._history.append(
+                    {
+                        "time": time.time(),
+                        "mode": self.mode,
+                        "rssi": self.rssi,
+                        "latency": self.latency,
+                        "buffer_depth": self.buffer_depth_val,
+                    }
+                )
                 metrics_history.record(
                     fps=self.camera.capture_fps,
                     latency=self.latency,

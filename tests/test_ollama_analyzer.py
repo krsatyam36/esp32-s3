@@ -56,7 +56,7 @@ class TestOllamaAnalyzer:
 
     @patch("src.app.requests.Session")
     def test_system_prompts(self, mock_session):
-        from src.app import OLLAMA_SYSTEM_PROMPT, BOSS_SYSTEM_PROMPT, OLLAMA_USER_PROMPT
+        from src.ai.ollama_analyzer import OLLAMA_SYSTEM_PROMPT, BOSS_SYSTEM_PROMPT, OLLAMA_USER_PROMPT
         assert len(OLLAMA_SYSTEM_PROMPT) > 0
         assert "real-time camera assistant" in OLLAMA_SYSTEM_PROMPT
         assert "toxic, passive-aggressive boss" in BOSS_SYSTEM_PROMPT

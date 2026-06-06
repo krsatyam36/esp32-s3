@@ -1,6 +1,7 @@
 """Tests for SmartAlert and AlertManager."""
 
-from src.app import SmartAlert, AlertManager, AlertRule
+from src.app import AlertManager, AlertRule
+from src.ai.smart_alert import SmartAlert
 
 
 class TestSmartAlert:

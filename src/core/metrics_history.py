@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import collections
-import logging
 import threading
 import time
 
@@ -14,14 +13,16 @@ class MetricsHistory:
 
     def record(self, fps: float, latency: float, queue_depth: int, mode: str):
         with self._lock:
-            self._points.append({
-                "time": time.time(),
-                "t": round(time.time() - self._start_time, 1),
-                "fps": round(fps, 1),
-                "latency": round(latency, 2),
-                "queue_depth": queue_depth,
-                "mode": mode,
-            })
+            self._points.append(
+                {
+                    "time": time.time(),
+                    "t": round(time.time() - self._start_time, 1),
+                    "fps": round(fps, 1),
+                    "latency": round(latency, 2),
+                    "queue_depth": queue_depth,
+                    "mode": mode,
+                }
+            )
 
     def get_series(self, metric: str = "fps", limit: int = 100) -> list[dict]:
         with self._lock:

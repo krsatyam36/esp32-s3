@@ -6,21 +6,20 @@ running Ollama vision models (llama3.2-vision, gemma3, qwen2.5vl, etc.)
 for real-time description without blocking the video display.
 """
 
-import cv2
-import urllib.request
-import urllib.error
-import http.client
-import socket
-import numpy as np
-import time
-import logging
-import json
-import base64
-import sys
 import argparse
+import base64
+import http.client
+import logging
+import os
+import sys
 import threading
+import time
+import urllib.error
+import urllib.request
+
+import cv2
+import numpy as np
 import requests
-from io import BytesIO
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("vision_llm")
@@ -29,16 +28,33 @@ parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
 args, _ = parser.parse_known_args()
 
+def _auto_discover() -> str:
+    from discover_esp32 import discover
+    ip = discover(timeout=10)
+    if ip:
+        return f"http://{ip}"
+    print("ERROR: Could not auto-discover ESP32.")
+    print("Make sure the board is powered on and connected to WiFi.")
+    print("Or provide the IP manually: python vision_llm.py --ip http://192.168.1.X/")
+    sys.exit(1)
+
+
 if args.ip:
     BASE_URL = args.ip.rstrip("/")
 else:
-    try:
-        from config import ESP32_IP
-        BASE_URL = ESP32_IP.rstrip("/")
-    except ImportError:
-        print("ERROR: No config.py found and no --ip provided.")
-        print("Copy config.example.py to config.py and set your ESP32 IP, or use --ip")
-        sys.exit(1)
+    _env_ip = os.environ.get("ESP32_IP", "").strip()
+    if _env_ip:
+        BASE_URL = _env_ip.rstrip("/")
+    else:
+        try:
+            from config import ESP32_IP
+            BASE_URL = ESP32_IP.rstrip("/")
+            if "192.168.1.X" in BASE_URL:
+                print("Default IP in config.py — auto-discovering...")
+                BASE_URL = _auto_discover()
+        except ImportError:
+            print("No config.py found — auto-discovering...")
+            BASE_URL = _auto_discover()
 OLLAMA_URL = "http://localhost:11434"
 
 # Vision-capable models available locally
@@ -65,6 +81,7 @@ USER_PROMPT = "What do you see in this camera frame?"
 # ============================================================
 #  OLLAMA CLIENT
 # ============================================================
+
 
 class OllamaVisionClient:
     def __init__(self, model: str):
@@ -96,9 +113,7 @@ class OllamaVisionClient:
                 "images": [b64],
                 "stream": False,
             }
-            resp = self.session.post(
-                f"{OLLAMA_URL}/api/generate", json=payload, timeout=60
-            )
+            resp = self.session.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=60)
             if resp.status_code == 200:
                 data = resp.json()
                 with self.lock:
@@ -123,6 +138,7 @@ class OllamaVisionClient:
 #  STREAM BUFFER
 # ============================================================
 
+
 class StreamBuffer:
     def __init__(self):
         self.buffer = b""
@@ -144,6 +160,7 @@ class StreamBuffer:
 #  MODEL CHECK
 # ============================================================
 
+
 def get_available_vision_models() -> list[str]:
     try:
         resp = requests.get(f"{OLLAMA_URL}/api/tags", timeout=5)
@@ -162,13 +179,18 @@ def get_available_vision_models() -> list[str]:
 #  MAIN
 # ============================================================
 
+
 def main():
     available_models = get_available_vision_models()
 
     _parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM")
     _parser.add_argument("--model", type=str, default=None, help="Ollama vision model")
-    _parser.add_argument("--interval", type=float, default=None, help="Analysis interval in seconds")
-    _parser.add_argument("--non-interactive", action="store_true", help="Skip prompts, use defaults")
+    _parser.add_argument(
+        "--interval", type=float, default=None, help="Analysis interval in seconds"
+    )
+    _parser.add_argument(
+        "--non-interactive", action="store_true", help="Skip prompts, use defaults"
+    )
     _args, _ = _parser.parse_known_args()
 
     if _args.model and _args.model in available_models:
@@ -209,17 +231,13 @@ def main():
     last_analysis = 0
     analysis_result = ""
     analysis_error = ""
-    fps_history = []
     frame_count = 0
     fps_start = time.time()
     rotation_angle = 0
     show_grid = False
     running = True
 
-    help_text = (
-        "Controls: q=Quit  a=Auto-toggle  n=Analyze now  "
-        "o=Rotate  g=Grid  h=Help"
-    )
+    help_text = "Controls: q=Quit  a=Auto-toggle  n=Analyze now  o=Rotate  g=Grid  h=Help"
 
     def wrap_text(text, max_width, scale=0.5, thick=1):
         """Word-wrap text to fit within max_width pixels."""
@@ -240,7 +258,16 @@ def main():
         return lines if lines else [text]
 
     def draw_text(img, text, x, y, color=(255, 255, 255), scale=0.5, thick=1):
-        cv2.putText(img, text, (x + 1, y + 1), cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), thick + 1, cv2.LINE_AA)
+        cv2.putText(
+            img,
+            text,
+            (x + 1, y + 1),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            scale,
+            (0, 0, 0),
+            thick + 1,
+            cv2.LINE_AA,
+        )
         cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick, cv2.LINE_AA)
 
     print("Controls:")
@@ -275,7 +302,11 @@ def main():
 
                     now = time.time()
 
-                    if auto_analyze and (now - last_analysis >= analysis_interval) and not ollama.processing:
+                    if (
+                        auto_analyze
+                        and (now - last_analysis >= analysis_interval)
+                        and not ollama.processing
+                    ):
                         ollama.ask(frame)
                         last_analysis = now
 
@@ -310,10 +341,16 @@ def main():
                     frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
 
                     draw_text(frame, f"Model: {model}", 10, 22, (0, 255, 0), 0.55, 2)
-                    draw_text(frame,
-                              f"FPS: {fps:.1f} | Auto: {'ON' if auto_analyze else 'OFF'} | "
-                              f"Interval: {analysis_interval}s | Next: {max(0, analysis_interval - (now - last_analysis)):.0f}s",
-                              10, 46, (255, 255, 0), 0.5, 1)
+                    draw_text(
+                        frame,
+                        f"FPS: {fps:.1f} | Auto: {'ON' if auto_analyze else 'OFF'} | "
+                        f"Interval: {analysis_interval}s | Next: {max(0, analysis_interval - (now - last_analysis)):.0f}s",
+                        10,
+                        46,
+                        (255, 255, 0),
+                        0.5,
+                        1,
+                    )
 
                     status = "Processing..." if ollama.processing else "Ready"
                     draw_text(frame, f"LLM: {status}", 10, 68, (255, 255, 0), 0.5, 1)
@@ -332,21 +369,49 @@ def main():
                         panel_h = max_lines * line_h + pad
                         fh = frame.shape[0]
                         overlay = frame.copy()
-                        cv2.rectangle(overlay, (0, fh - panel_h), (frame.shape[1], fh), (0, 0, 0), -1)
+                        cv2.rectangle(
+                            overlay, (0, fh - panel_h), (frame.shape[1], fh), (0, 0, 0), -1
+                        )
                         frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
                         for i, line in enumerate(lines[:max_lines]):
-                            draw_text(frame, line, margin, fh - panel_h + pad + i * line_h + 12,
-                                      (255, 255, 255), 0.5, 1)
+                            draw_text(
+                                frame,
+                                line,
+                                margin,
+                                fh - panel_h + pad + i * line_h + 12,
+                                (255, 255, 255),
+                                0.5,
+                                1,
+                            )
                         if len(lines) > max_lines:
-                            draw_text(frame, f"... +{len(lines) - max_lines} more lines",
-                                      margin, fh - 8, (180, 180, 180), 0.4, 1)
+                            draw_text(
+                                frame,
+                                f"... +{len(lines) - max_lines} more lines",
+                                margin,
+                                fh - 8,
+                                (180, 180, 180),
+                                0.4,
+                                1,
+                            )
                     elif analysis_error:
                         overlay = frame.copy()
-                        cv2.rectangle(overlay, (0, frame.shape[0] - 40), (frame.shape[1], frame.shape[0]),
-                                      (0, 0, 0), -1)
+                        cv2.rectangle(
+                            overlay,
+                            (0, frame.shape[0] - 40),
+                            (frame.shape[1], frame.shape[0]),
+                            (0, 0, 0),
+                            -1,
+                        )
                         frame = cv2.addWeighted(frame, 0.7, overlay, 0.3, 0)
-                        draw_text(frame, f"Error: {analysis_error}", 10, frame.shape[0] - 14,
-                                  (0, 0, 255), 0.5, 1)
+                        draw_text(
+                            frame,
+                            f"Error: {analysis_error}",
+                            10,
+                            frame.shape[0] - 14,
+                            (0, 0, 255),
+                            0.5,
+                            1,
+                        )
 
                     cv2.imshow("ESP32-S3 Vision LLM", frame)
                     key = cv2.waitKey(1) & 0xFF
@@ -354,7 +419,7 @@ def main():
                     if key == ord("q"):
                         running = False
                         break
-                    elif key == ord("o"):
+                    if key == ord("o"):
                         rotation_angle = (rotation_angle + 90) % 360
                         print(f"Rotation: {rotation_angle}°")
                     elif key == ord("g"):
@@ -372,9 +437,13 @@ def main():
                             ollama.ask(frame)
                             last_analysis = now
 
-                except (urllib.error.URLError, ConnectionError,
-                        http.client.IncompleteRead, http.client.RemoteDisconnected,
-                        socket.timeout):
+                except (
+                    TimeoutError,
+                    urllib.error.URLError,
+                    ConnectionError,
+                    http.client.IncompleteRead,
+                    http.client.RemoteDisconnected,
+                ):
                     print("Connection lost, reconnecting...")
                     break
                 except Exception as e:

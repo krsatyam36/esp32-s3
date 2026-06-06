@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import http.client
-import socket
 import threading
 import time
 import urllib.error
@@ -77,9 +76,13 @@ class CameraCapture:
                                 self._latest_frame = jpg
                                 self._frame_id += 1
                                 self._frame_timestamps.append(time.time())
-                    except (urllib.error.URLError, ConnectionError,
-                            http.client.IncompleteRead, http.client.RemoteDisconnected,
-                            socket.timeout):
+                    except (
+                        TimeoutError,
+                        urllib.error.URLError,
+                        ConnectionError,
+                        http.client.IncompleteRead,
+                        http.client.RemoteDisconnected,
+                    ):
                         break
                     except Exception:
                         break

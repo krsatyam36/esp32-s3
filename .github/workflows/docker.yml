@@ -13,5 +13,5 @@ jobs:
       - run: echo "DOCKER_BUILDKIT=1" >> $GITHUB_ENV
       - run: docker build -t xiao-edge-platform .
       - run: docker run --name xiao-test -d -p 8000:8000 xiao-edge-platform
-      - run: sleep 3 && curl -f http://localhost:8000/health
+      - run: sleep 5 && curl -f --max-time 10 http://localhost:8000/health
       - run: docker stop xiao-test && docker rm xiao-test
