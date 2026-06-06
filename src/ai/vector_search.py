@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64
 import io
 import logging
@@ -8,19 +10,26 @@ from datetime import datetime, timezone
 import cv2
 import numpy as np
 
+import typing
+
+if typing.TYPE_CHECKING:
+    from src.core.camera_capture import CameraCapture
+
 
 class VectorSearch:
-    def __init__(self, camera, interval=10.0):
+    def __init__(self, camera: CameraCapture, interval: float = 10.0) -> None:
         self.camera = camera
         self.interval = interval
-        self.collection = None
-        self._encoder = None
-        self._model_name = None
-        self.ready = False
-        self.error = ""
-        self._running = False
+        self.collection: typing.Any = None
+        self._encoder: typing.Any = None
+        self._model_name: str | None = None
+        self.ready: bool = False
+        self.error: str = ""
+        self._running: bool = False
         self._lock = threading.Lock()
-        self._index_count = 0
+        self._index_count: int = 0
+        self._ready_chroma: bool = False
+        self._chroma: typing.Any = None
         try:
             import chromadb
             self._chroma = chromadb.Client(
@@ -32,7 +41,7 @@ class VectorSearch:
             self._ready_chroma = False
             self.error = f"ChromaDB init failed: {e}"
 
-    def _load_encoder(self):
+    def _load_encoder(self) -> bool:
         if self._encoder is not None:
             return True
         try:
@@ -46,7 +55,7 @@ class VectorSearch:
             self.error = f"CLIP load failed: {e}"
             return False
 
-    def _encode_image(self, frame_bytes) -> list[float] | None:
+    def _encode_image(self, frame_bytes: bytes) -> list[float] | None:
         if not self._load_encoder():
             return None
         try:
@@ -69,18 +78,18 @@ class VectorSearch:
         except Exception:
             return None
 
-    def start(self):
+    def start(self) -> None:
         if not self._ready_chroma:
             return
         self._running = True
         t = threading.Thread(target=self._loop, daemon=True)
         t.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._running = False
 
-    def _loop(self):
-        last_id = -1
+    def _loop(self) -> None:
+        last_id: int = -1
         while self._running:
             fid = self.camera.frame_id
             raw = self.camera.latest_frame
@@ -101,7 +110,7 @@ class VectorSearch:
                         pass
             time.sleep(self.interval)
 
-    def search(self, query: str, top_k: int = 5) -> list[dict]:
+    def search(self, query: str, top_k: int = 5) -> list[dict[str, object]]:
         if not self.ready or not self._ready_chroma:
             return []
         text_emb = self._encode_text(query)
@@ -112,7 +121,7 @@ class VectorSearch:
                 query_embeddings=[text_emb],
                 n_results=min(top_k, self._index_count or 1),
             )
-            hits = []
+            hits: list[dict[str, object]] = []
             if results.get("ids") and results["ids"][0]:
                 for i, fid in enumerate(results["ids"][0]):
                     meta = (results.get("metadatas") or [{}])[0].get(i, {}) if isinstance(results.get("metadatas"), list) else {}
@@ -127,7 +136,7 @@ class VectorSearch:
             return []
 
     @property
-    def info(self) -> dict:
+    def info(self) -> dict[str, object]:
         return {
             "ready": self.ready,
             "chroma_ok": self._ready_chroma,
