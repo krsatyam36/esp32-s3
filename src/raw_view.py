@@ -10,7 +10,11 @@ import os
 import sys
 import argparse
 import threading
+import logging
 from datetime import datetime
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger("raw_view")
 
 parser = argparse.ArgumentParser(description="ESP32-S3 Camera Viewer")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
