@@ -1431,6 +1431,19 @@ async def reset_heatmap():
     return {"success": True}
 
 
+# ─── Diagnostics Proxy ───────────────────────
+
+@app.get("/diag")
+async def diagnostics():
+    """Proxy to ESP32 firmware diagnostics."""
+    try:
+        resp = urllib.request.urlopen(f"{BASE_URL}/diag", timeout=5)
+        if resp.status == 200:
+            data = json.loads(resp.read().decode())
+            return {"esp32": data, "cached": False}
+    except Exception as e:
+        return {"esp32": None, "error": str(e), "cached": False}
+
 # ─── Health & Status ─────────────────────────
 
 @app.get("/health")
