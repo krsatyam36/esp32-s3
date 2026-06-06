@@ -13,6 +13,7 @@ import http.client
 import socket
 import numpy as np
 import time
+import logging
 import json
 import base64
 import sys
@@ -20,6 +21,9 @@ import argparse
 import threading
 import requests
 from io import BytesIO
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+log = logging.getLogger("vision_llm")
 
 parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
