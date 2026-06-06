@@ -6,8 +6,6 @@
 #include "ota_manager.h"
 #include "web_server.h"
 
-#define FIRMWARE_VERSION "2.0.0"
-
 void printDiagnostics() {
     Serial.println("\n========== XIAO ESP32S3 DIAGNOSTICS ==========");
     Serial.printf("Firmware: v%s\n", FIRMWARE_VERSION);
