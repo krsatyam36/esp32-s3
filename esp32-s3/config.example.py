@@ -5,3 +5,5 @@ ESP32_IP = "http://192.168.1.X/"
 # OLLAMA_URL = "http://localhost:11434"
 # OLLAMA_MODEL = "gemma3:latest"
 # ANALYSIS_INTERVAL = 5.0
+# YOLO_CONFIDENCE = 0.35
+# PORT = 8000
