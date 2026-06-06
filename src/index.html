@@ -6,76 +6,95 @@
   <title>ESP32-S3 Edge Intelligence Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #0b1120;
+      background: #070b17;
       background-image:
-        radial-gradient(ellipse at 20% 50%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 50%, rgba(168, 85, 247, 0.04) 0%, transparent 50%);
+        radial-gradient(ellipse at 20% 30%, rgba(56, 189, 248, 0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(168, 85, 247, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 0%, rgba(34, 197, 94, 0.03) 0%, transparent 50%);
       min-height: 100vh; color: #e2e8f0;
     }
-    .glass { background: rgba(15,23,42,0.65); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.06); }
-    .glass-card { background: rgba(15,23,42,0.70); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .glass { background: rgba(12,20,38,0.72); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,0.06); }
+    .glass-card { background: rgba(12,20,38,0.78); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+    .glass-card:hover { border-color: rgba(255,255,255,0.12); }
     .stream-wrapper { position: relative; background: #000; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; border: 1px solid rgba(255,255,255,0.06); }
-    .stream-wrapper img { width: 100%; height: 100%; object-fit: contain; display: block; transition: transform 0.35s ease; }
+    .stream-wrapper img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .stream-wrapper img.rot-90 { transform: rotate(90deg); }
     .stream-wrapper img.rot-180 { transform: rotate(180deg); }
     .stream-wrapper img.rot-270 { transform: rotate(270deg); }
-    .stream-wrapper .grid-overlay { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.25s; }
-    .stream-wrapper .grid-overlay.active { opacity: 0.35; }
-    .stream-wrapper .grid-overlay::before,.stream-wrapper .grid-overlay::after { content:''; position: absolute; background: rgba(255,255,255,0.5); }
-    .stream-wrapper .grid-overlay::before { top:33.33%; left:0; right:0; height:1px; }
-    .stream-wrapper .grid-overlay::after { left:33.33%; top:0; bottom:0; width:1px; }
-    .live-badge { position: absolute; top:12px; left:12px; z-index:10; display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); padding:6px 14px; border-radius:8px; border:1px solid rgba(34,197,94,0.3); font-size:12px; font-weight:600; letter-spacing:0.5px; }
+    .live-badge { position: absolute; top:12px; left:12px; z-index:10; display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.7); backdrop-filter:blur(10px); padding:5px 14px; border-radius:10px; border:1px solid rgba(34,197,94,0.3); font-size:11px; font-weight:600; letter-spacing:0.5px; }
     .live-dot { width:8px; height:8px; border-radius:50%; background:#22c55e; animation:pulse-dot 1.8s ease-in-out infinite; }
     @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.85)} }
-    .status-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
-    .status-dot.on { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,0.4); }
-    .status-dot.off { background:#ef4444; box-shadow:0 0 6px rgba(239,68,68,0.3); }
-    .status-dot.na { background:#64748b; }
-    .cta { padding:8px 18px; border-radius:10px; font-size:13px; font-weight:600; transition:all 0.2s ease; cursor:pointer; border:none; display:inline-flex; align-items:center; gap:6px; }
+    .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+    .status-dot.on { background:#22c55e; box-shadow:0 0 8px rgba(34,197,94,0.5); }
+    .status-dot.off { background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.4); }
+    .status-dot.na { background:#475569; }
+    .nav-tab { padding:10px 20px; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.25s; border-radius:10px 10px 0 0; color:#64748b; border-bottom:2px solid transparent; }
+    .nav-tab:hover { color:#94a3b8; background:rgba(255,255,255,0.03); }
+    .nav-tab.active { color:#38bdf8; border-bottom-color:#38bdf8; background:rgba(56,189,248,0.06); }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; animation:fadeIn 0.35s ease-out; }
+    .cta { padding:8px 20px; border-radius:10px; font-size:13px; font-weight:600; transition:all 0.2s ease; cursor:pointer; border:none; display:inline-flex; align-items:center; gap:6px; }
     .cta:hover { transform:translateY(-1px); filter:brightness(1.15); }
     .cta:active { transform:translateY(0); }
-    .cta-sm { padding:5px 12px; font-size:11px; border-radius:8px; }
-    select, input { padding:8px 14px; border-radius:10px; font-size:13px; font-weight:500; background:rgba(15,23,42,0.8); color:#e2e8f0; border:1px solid rgba(255,255,255,0.08); cursor:pointer; outline:none; transition:border-color 0.2s; }
+    .cta-sm { padding:5px 14px; font-size:11px; border-radius:8px; }
+    .cta-xs { padding:4px 10px; font-size:10px; border-radius:6px; }
+    select, input { padding:8px 14px; border-radius:10px; font-size:13px; font-weight:500; background:rgba(12,20,38,0.9); color:#e2e8f0; border:1px solid rgba(255,255,255,0.08); cursor:pointer; outline:none; transition:border-color 0.2s; }
     select:focus, input:focus { border-color:rgba(56,189,248,0.5); }
     input::placeholder { color: #475569; }
-    .panel-scroll { max-height:280px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.08) transparent; }
+    .panel-scroll { overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.08) transparent; }
     .panel-scroll::-webkit-scrollbar { width:4px; }
     .panel-scroll::-webkit-scrollbar-track { background:transparent; }
     .panel-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:4px; }
     .fade-in { animation:fadeIn 0.4s ease-out; }
-    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .typing::after { content:''; display:inline-block; width:6px; height:14px; background:#38bdf8; margin-left:4px; animation:blink 0.8s step-end infinite; vertical-align:middle; }
     @keyframes blink { 50% { opacity:0; } }
     .boss-mode-shake { animation:bossShake 0.6s ease-in-out; }
     @keyframes bossShake { 0%,100%{transform:translateX(0)} 10%{transform:translateX(-6px)} 20%{transform:translateX(6px)} 30%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 50%{transform:translateX(-2px)} 60%{transform:translateX(2px)} }
     .btn-group { display:flex; gap:2px; }
-    .btn-group .cta { border-radius:0; margin:0; padding:6px 12px; font-size:12px; }
+    .btn-group .cta { border-radius:0; margin:0; padding:6px 14px; font-size:12px; }
     .btn-group .cta:first-child { border-radius:10px 0 0 10px; }
     .btn-group .cta:last-child { border-radius:0 10px 10px 0; }
     .btn-group .cta.active-rot { background:#3b82f6; color:#fff; }
     .mode-normal { color:#22c55e; }
     .mode-throttled { color:#f59e0b; }
     .mode-emergency { color:#ef4444; }
-    .sim-slider { -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:2px; background:#334155; outline:none; }
-    .sim-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:16px; border-radius:50%; background:#3b82f6; cursor:pointer; border:2px solid #0b1120; }
-    .sim-slider::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:#3b82f6; cursor:pointer; border:2px solid #0b1120; }
-    .event-item { border-left:3px solid #3b82f6; padding-left:10px; margin-bottom:8px; }
+    .metric-card { background:rgba(0,0,0,0.35); border-radius:12px; padding:14px; text-align:center; border:1px solid rgba(255,255,255,0.04); }
+    .metric-value { font-size:1.5em; font-weight:700; font-variant-numeric:tabular-nums; }
+    .metric-label { font-size:10px; color:#64748b; margin-top:6px; text-transform:uppercase; letter-spacing:0.8px; }
+    .scene-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; }
+    .scene-indoor { background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.25); }
+    .scene-outdoor { background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.25); }
+    .scene-night { background:rgba(99,102,241,0.15); color:#818cf8; border:1px solid rgba(99,102,241,0.25); }
+    .scene-low_light { background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.25); }
+    .scene-crowded { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.25); }
+    .scene-unknown { background:rgba(100,116,139,0.15); color:#94a3b8; border:1px solid rgba(100,116,139,0.25); }
+    .event-item { border-left:3px solid #3b82f6; padding:8px 12px; margin-bottom:6px; background:rgba(0,0,0,0.2); border-radius:0 8px 8px 0; }
     .event-item.high { border-left-color:#ef4444; }
     .event-item.medium { border-left-color:#f59e0b; }
-    .search-highlight { background:rgba(56,189,248,0.2); border-radius:4px; padding:2px 6px; }
+    .chart-container { position:relative; height:180px; width:100%; }
+    .toggle-switch { position:relative; width:36px; height:20px; background:#334155; border-radius:10px; cursor:pointer; transition:background 0.25s; }
+    .toggle-switch.active { background:#3b82f6; }
+    .toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform 0.25s; }
+    .toggle-switch.active::after { transform:translateX(16px); }
+    .alert-rule-card { background:rgba(0,0,0,0.25); border-radius:10px; padding:12px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05); }
+    .timeline-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+    .heatmap-wrapper { position:relative; background:#000; border-radius:12px; overflow:hidden; aspect-ratio:4/3; }
+    @media (max-width:1024px) { .nav-tab { padding:8px 12px; font-size:12px; } }
   </style>
 </head>
 <body>
 
-<div class="max-w-7xl mx-auto px-4 py-5">
+<div class="max-w-7xl mx-auto px-4 py-4">
   <!-- ═══ Header ═══ -->
-  <header class="glass rounded-2xl px-6 py-4 mb-5 flex flex-wrap items-center justify-between gap-3">
+  <header class="glass rounded-2xl px-6 py-3 mb-4 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-4">
       <div class="flex items-center gap-2.5">
         <span class="live-dot"></span>
@@ -83,269 +102,728 @@
       </div>
       <h1 class="text-lg font-bold tracking-tight text-white/90">
         ESP32-S3 <span class="text-sky-400">Edge Intelligence</span>
+        <span class="text-[10px] font-mono text-slate-600 ml-2">v2.0.0</span>
       </h1>
     </div>
-    <div class="flex items-center gap-3 text-xs">
+    <div class="flex items-center gap-3 text-xs flex-wrap">
       <span class="flex items-center gap-1.5"><span id="healthEsp" class="status-dot na"></span><span class="text-slate-500">ESP32</span></span>
       <span class="flex items-center gap-1.5"><span id="healthOllama" class="status-dot na"></span><span class="text-slate-500">Ollama</span></span>
       <span class="w-px h-4 bg-white/10"></span>
-      <span id="modeDisplay" class="font-semibold text-slate-400">normal</span>
+      <span id="sceneDisplay" class="scene-badge scene-unknown text-[10px] px-3 py-1">--</span>
       <span class="w-px h-4 bg-white/10"></span>
-      <span id="fpsDisplay" class="font-mono text-slate-400">0 FPS</span>
+      <span id="modeDisplay" class="font-semibold text-slate-400 text-[11px]">normal</span>
       <span class="w-px h-4 bg-white/10"></span>
-      <span id="resDisplay" class="font-mono text-slate-500">--</span>
+      <span id="fpsDisplay" class="font-mono text-slate-400 text-[11px]">0 FPS</span>
     </div>
   </header>
 
-  <!-- ═══ 3-Column Layout ═══ -->
-  <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+  <!-- ═══ Navigation Tabs ═══ -->
+  <div class="flex gap-1 mb-4 overflow-x-auto">
+    <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">&#x1F4FA; Dashboard</div>
+    <div class="nav-tab" data-tab="analytics" onclick="switchTab('analytics')">&#x1F4CA; Analytics</div>
+    <div class="nav-tab" data-tab="events" onclick="switchTab('events')">&#x1F4CB; Events</div>
+    <div class="nav-tab" data-tab="alerts" onclick="switchTab('alerts')">&#x1F514; Alerts</div>
+    <div class="nav-tab" data-tab="heatmap" onclick="switchTab('heatmap')">&#x1F3A8; Heatmap</div>
+  </div>
 
-    <!-- ═══ Left Column (8/12) ═══ -->
-    <div class="xl:col-span-8 space-y-4">
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 1: Dashboard -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
 
-      <!-- Video -->
-      <div class="glass-card rounded-2xl p-3">
-        <div class="stream-wrapper" id="streamWrapper">
-          <img id="videoFeed" src="/stream" alt="Live stream" />
-          <div class="grid-overlay" id="gridOverlay"></div>
-          <div class="live-badge"><span class="live-dot"></span><span class="text-green-400 text-xs font-semibold tracking-wide">LIVE</span></div>
-        </div>
-      </div>
-
-      <!-- Controls -->
-      <div class="glass-card rounded-2xl p-5">
-        <div class="flex flex-wrap items-center gap-3">
-          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">LED</span>
-          <button class="cta bg-green-600/80 text-white hover:bg-green-500" onclick="setLed('on')">&#9679; ON</button>
-          <button class="cta bg-red-600/60 text-white hover:bg-red-500" onclick="setLed('off')">&#9711; OFF</button>
-          <button class="cta bg-amber-600/60 text-white hover:bg-amber-500" onclick="flashLed()">&#9889; Flash</button>
-          <span class="w-px h-7 bg-white/5 mx-2"></span>
-          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Res</span>
-          <select id="resSelect" onchange="changeResolution()">
-            <option value="SVGA">SVGA &middot; 800&times;600</option>
-            <option value="UXGA" selected>UXGA &middot; 1600&times;1200</option>
-          </select>
-          <span class="w-px h-7 bg-white/5 mx-2"></span>
-          <button class="cta bg-slate-700/60 text-white hover:bg-slate-600" onclick="takeSnapshot()">&#128247; Snapshot</button>
-        </div>
-        <div class="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-white/5">
-          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Rotate</span>
-          <div class="btn-group" id="rotGroup">
-            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 active-rot" data-deg="0" onclick="setRotation(0)">0&deg;</button>
-            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="90" onclick="setRotation(90)">90&deg;</button>
-            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="180" onclick="setRotation(180)">180&deg;</button>
-            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="270" onclick="setRotation(270)">270&deg;</button>
-          </div>
-          <span class="w-px h-7 bg-white/5 mx-2"></span>
-          <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Grid</span>
-          <button id="gridBtn" class="cta bg-slate-700/50 text-white hover:bg-slate-600" onclick="toggleGrid()">&#9744; Off</button>
-        </div>
-      </div>
-
-      <!-- Telemetry -->
-      <div class="glass-card rounded-2xl p-5">
-        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#128202; Telemetry</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-          <div class="bg-black/40 rounded-xl p-3 text-center">
-            <div class="metric-value text-lg font-bold text-sky-400" id="teleHeap">--</div>
-            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Free Heap</div>
-          </div>
-          <div class="bg-black/40 rounded-xl p-3 text-center">
-            <div class="metric-value text-lg font-bold text-sky-400" id="teleUptime">--</div>
-            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Uptime (s)</div>
-          </div>
-          <div class="bg-black/40 rounded-xl p-3 text-center">
-            <div class="metric-value text-lg font-bold text-sky-400" id="teleRSSI">--</div>
-            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">RSSI</div>
-          </div>
-          <div class="bg-black/40 rounded-xl p-3 text-center">
-            <div class="metric-value text-lg font-bold text-sky-400" id="teleRes">--</div>
-            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Resolution</div>
-          </div>
-          <div class="bg-black/40 rounded-xl p-3 text-center">
-            <div class="metric-value text-lg font-bold text-sky-400" id="telePSRAM">--</div>
-            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Free PSRAM</div>
-          </div>
-          <div class="bg-black/40 rounded-xl p-3 text-center">
-            <div class="metric-value text-lg font-bold text-sky-400" id="teleTemp">--</div>
-            <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Temp (&deg;C)</div>
+      <!-- Left Column (8/12) -->
+      <div class="xl:col-span-8 space-y-4">
+        <!-- Video Feed -->
+        <div class="glass-card rounded-2xl p-2">
+          <div class="stream-wrapper" id="streamWrapper">
+            <img id="videoFeed" src="/stream" alt="Live stream" />
+            <div class="live-badge"><span class="live-dot"></span><span class="text-green-400 text-xs font-semibold tracking-wide">LIVE</span></div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- ═══ Right Column (4/12) ═══ -->
-    <div class="xl:col-span-4 space-y-4">
-
-      <!-- AI Vision -->
-      <div class="glass-card rounded-2xl p-5">
-        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#129302; AI Vision</h2>
-        <div class="space-y-3">
-          <div>
-            <label class="text-[11px] text-slate-500 block mb-1.5">Model</label>
-            <select id="modelSelect" class="w-full" onchange="changeModel()"></select>
+        <!-- Controls -->
+        <div class="glass-card rounded-2xl p-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">LED</span>
+            <button class="cta bg-green-600/80 text-white hover:bg-green-500" onclick="setLed('on')">&#9679; ON</button>
+            <button class="cta bg-red-600/60 text-white hover:bg-red-500" onclick="setLed('off')">&#9711; OFF</button>
+            <button class="cta bg-amber-600/60 text-white hover:bg-amber-500" onclick="flashLed()">&#9889; Flash</button>
+            <span class="w-px h-7 bg-white/5 mx-1"></span>
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Res</span>
+            <select id="resSelect" class="text-xs py-1.5" onchange="changeResolution()">
+              <option value="QQVGA">QQVGA</option>
+              <option value="QVGA">QVGA</option>
+              <option value="VGA">VGA</option>
+              <option value="CIF">CIF</option>
+              <option value="SVGA">SVGA</option>
+              <option value="UXGA" selected>UXGA</option>
+            </select>
+            <span class="w-px h-7 bg-white/5 mx-1"></span>
+            <button class="cta bg-sky-600/80 text-white hover:bg-sky-500" onclick="takeSnapshot()">&#128247; Snapshot</button>
+            <span class="w-px h-7 bg-white/5 mx-1"></span>
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Flip</span>
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 cta-sm" onclick="flipCamera('v')">&#x2195; V</button>
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 cta-sm" onclick="flipCamera('h')">&#x2194; H</button>
           </div>
-          <div class="flex items-center gap-3">
-            <div class="flex-1">
-              <label class="text-[11px] text-slate-500 block mb-1.5">Interval</label>
-              <select id="intervalSelect" class="w-full" onchange="changeInterval()">
-                <option value="2">2s</option><option value="5" selected>5s</option>
-                <option value="10">10s</option><option value="15">15s</option><option value="30">30s</option>
-              </select>
+          <div class="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-white/5">
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Rotate</span>
+            <div class="btn-group" id="rotGroup">
+              <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 active-rot" data-deg="0" onclick="setRotation(0)">0&deg;</button>
+              <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="90" onclick="setRotation(90)">90&deg;</button>
+              <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="180" onclick="setRotation(180)">180&deg;</button>
+              <button class="cta bg-slate-700/50 text-white hover:bg-slate-600" data-deg="270" onclick="setRotation(270)">270&deg;</button>
             </div>
-            <div class="pt-5"><button class="cta bg-sky-600/80 text-white hover:bg-sky-500 whitespace-nowrap" onclick="forceAnalysis()">&#9654; Analyze</button></div>
+            <span class="w-px h-7 bg-white/5 mx-1"></span>
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Grid</span>
+            <button id="gridBtn" class="cta bg-slate-700/50 text-white hover:bg-slate-600" onclick="toggleGrid()">&#9744;</button>
+          </div>
+        </div>
+
+        <!-- Telemetry -->
+        <div class="glass-card rounded-2xl p-4">
+          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#128202; Telemetry</h2>
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            <div class="metric-card"><div class="metric-value text-sky-400" id="teleHeap">--</div><div class="metric-label">Heap</div></div>
+            <div class="metric-card"><div class="metric-value text-sky-400" id="teleUptime">--</div><div class="metric-label">Uptime</div></div>
+            <div class="metric-card"><div class="metric-value text-sky-400" id="teleRSSI">--</div><div class="metric-label">RSSI</div></div>
+            <div class="metric-card"><div class="metric-value text-sky-400" id="teleRes">--</div><div class="metric-label">Resolution</div></div>
+            <div class="metric-card"><div class="metric-value text-sky-400" id="telePSRAM">--</div><div class="metric-label">PSRAM</div></div>
+            <div class="metric-card"><div class="metric-value text-sky-400" id="teleTemp">--</div><div class="metric-label">Temp</div></div>
           </div>
         </div>
       </div>
 
-      <!-- Analysis Results -->
-      <div class="glass-card rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-3">
-          <span id="analysisStatus" class="text-[10px] font-mono text-slate-500">waiting</span>
-          <span id="analysisModel" class="text-[10px] font-mono text-slate-600">--</span>
-        </div>
-        <div id="analysisContent" class="panel-scroll min-h-[120px] max-h-[200px]">
-          <div class="flex items-center justify-center h-full text-slate-600 text-sm"><span>Waiting&hellip;</span></div>
-        </div>
-        <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-600">
-          <span>Next: <span id="countdownDisplay" class="font-mono text-slate-400">--</span>s</span>
-          <button class="text-sky-500 hover:text-sky-400 transition-colors bg-transparent border-none cursor-pointer text-[11px] font-medium" onclick="clearAnalysis()">Clear</button>
-        </div>
-      </div>
-
-      <!-- Semantic Search -->
-      <div class="glass-card rounded-2xl p-5">
-        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#128269; Semantic Search</h2>
-        <div class="flex gap-2 mb-3">
-          <input id="searchInput" type="text" placeholder="e.g. person holding a tool" class="flex-1" onkeydown="if(event.key==='Enter') doSearch()" />
-          <button class="cta bg-sky-600/80 text-white hover:bg-sky-500 cta-sm" onclick="doSearch()">Search</button>
-        </div>
-        <div id="searchResults" class="panel-scroll max-h-[160px]">
-          <div class="text-xs text-slate-600 text-center py-4">Type a query to search frame history</div>
-        </div>
-        <div id="searchStatus" class="text-[10px] text-slate-600 mt-2"></div>
-      </div>
-
-      <!-- Events -->
-      <div class="glass-card rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#128680; Events</h2>
-          <span id="eventCount" class="text-[10px] font-mono text-slate-500">0</span>
-        </div>
-        <div id="eventList" class="panel-scroll max-h-[180px]">
-          <div class="text-xs text-slate-600 text-center py-4">No events yet</div>
-        </div>
-      </div>
-
-      <!-- System Status -->
-      <div class="glass-card rounded-2xl p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#9881; Adaptive Control</h2>
-          <span id="sysMode" class="text-[10px] font-bold mode-normal">NORMAL</span>
-        </div>
-        <div class="grid grid-cols-2 gap-2 text-[11px] mb-3">
-          <div><span class="text-slate-500">RSSI:</span> <span id="sysRSSI" class="font-mono text-slate-300">--</span></div>
-          <div><span class="text-slate-500">Latency:</span> <span id="sysLatency" class="font-mono text-slate-300">--</span></div>
-          <div><span class="text-slate-500">Buffer:</span> <span id="sysBuffer" class="font-mono text-slate-300">--</span></div>
-          <div><span class="text-slate-500">Action:</span> <span id="sysAction" class="font-mono text-slate-300">--</span></div>
-        </div>
-
-        <!-- Interactive Simulator -->
-        <div class="bg-black/40 rounded-xl p-4 mt-3">
-          <h3 class="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500 mb-3">&#x2699; Edge Queue Simulator</h3>
-          <div class="space-y-3 text-[11px]">
+      <!-- Right Column (4/12) -->
+      <div class="xl:col-span-4 space-y-4">
+        <!-- AI Vision -->
+        <div class="glass-card rounded-2xl p-4">
+          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#129302; AI Vision</h2>
+          <div class="space-y-3">
             <div>
-              <label class="text-slate-500">Network RSSI <span id="simRSSIVal" class="font-mono text-slate-300">-50 dBm</span></label>
-              <input type="range" class="sim-slider" id="simRSSI" min="-95" max="-30" value="-50" oninput="runSim()" />
+              <label class="text-[11px] text-slate-500 block mb-1">Model</label>
+              <select id="modelSelect" class="w-full text-xs" onchange="changeModel()"></select>
             </div>
-            <div>
-              <label class="text-slate-500">Inference Latency <span id="simLatVal" class="font-mono text-slate-300">2s</span></label>
-              <input type="range" class="sim-slider" id="simLat" min="1" max="40" value="2" oninput="runSim()" />
-            </div>
-            <div>
-              <label class="text-slate-500">Camera FPS <span id="simFPSVal" class="font-mono text-slate-300">30</span></label>
-              <input type="range" class="sim-slider" id="simFPS" min="5" max="60" value="30" oninput="runSim()" />
-            </div>
-            <div id="simResult" class="text-xs font-mono text-center py-2 rounded-lg bg-black/40 text-sky-400">
-              Mode: <span class="text-green-400 font-bold">NORMAL</span> &middot; Queue: <span class="text-slate-300">0</span> frames
+            <div class="flex items-center gap-3">
+              <div class="flex-1">
+                <label class="text-[11px] text-slate-500 block mb-1">Interval</label>
+                <select id="intervalSelect" class="w-full text-xs" onchange="changeInterval()">
+                  <option value="2">2s</option><option value="5" selected>5s</option>
+                  <option value="10">10s</option><option value="15">15s</option><option value="30">30s</option>
+                </select>
+              </div>
+              <div class="pt-5"><button class="cta bg-sky-600/80 text-white hover:bg-sky-500 whitespace-nowrap" onclick="forceAnalysis()">&#9654;</button></div>
             </div>
           </div>
         </div>
-      </div>
 
+        <!-- Analysis Results -->
+        <div class="glass-card rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span id="analysisStatus" class="text-[10px] font-mono text-slate-500">waiting</span>
+            <span id="analysisModel" class="text-[10px] font-mono text-slate-600">--</span>
+          </div>
+          <div id="analysisContent" class="panel-scroll min-h-[100px] max-h-[180px] text-sm leading-relaxed">
+            <div class="flex items-center justify-center h-full text-slate-600"><span>Waiting&hellip;</span></div>
+          </div>
+          <div class="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-600">
+            <span>Next: <span id="countdownDisplay" class="font-mono text-slate-400">--</span>s</span>
+            <button class="text-sky-500 hover:text-sky-400 bg-transparent border-none cursor-pointer text-[11px] font-medium" onclick="clearAnalysis()">Clear</button>
+          </div>
+        </div>
+
+        <!-- Scene & Stats -->
+        <div class="glass-card rounded-2xl p-4">
+          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#127758; Scene</h2>
+          <div class="flex items-center gap-3 mb-3">
+            <span id="sceneBadge" class="scene-badge scene-unknown">Analyzing...</span>
+            <span id="sceneHistory" class="text-[10px] text-slate-600"></span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="bg-black/30 rounded-lg p-2"><span class="text-slate-500">Detections:</span> <span id="statsDetections" class="font-mono text-slate-300">0</span></div>
+            <div class="bg-black/30 rounded-lg p-2"><span class="text-slate-500">Classes:</span> <span id="statsClasses" class="font-mono text-slate-300">0</span></div>
+          </div>
+        </div>
+
+        <!-- YOLO Events Quick View -->
+        <div class="glass-card rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#128680; Recent Events</h2>
+            <span id="eventCount" class="text-[10px] font-mono text-slate-500">0</span>
+          </div>
+          <div id="eventList" class="panel-scroll max-h-[200px] text-xs">
+            <div class="text-slate-600 text-center py-4">No events yet</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <footer class="mt-5 text-center text-[11px] text-slate-700">ESP32-S3 Edge Intelligence Platform &middot; v2.0.0</footer>
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 2: Analytics -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div id="tab-analytics" class="tab-content">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- FPS Chart -->
+      <div class="glass-card rounded-2xl p-4">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#x26A1; FPS Over Time</h2>
+        <div class="chart-container"><canvas id="fpsChart"></canvas></div>
+        <div class="flex gap-4 mt-2 text-[11px] text-slate-500">
+          <span>Avg: <span id="fpsAvg" class="font-mono text-slate-300">--</span></span>
+          <span>Min: <span id="fpsMin" class="font-mono text-slate-300">--</span></span>
+          <span>Max: <span id="fpsMax" class="font-mono text-slate-300">--</span></span>
+        </div>
+      </div>
+
+      <!-- Latency Chart -->
+      <div class="glass-card rounded-2xl p-4">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#x23F1; Inference Latency</h2>
+        <div class="chart-container"><canvas id="latencyChart"></canvas></div>
+        <div class="flex gap-4 mt-2 text-[11px] text-slate-500">
+          <span>Avg: <span id="latAvg" class="font-mono text-slate-300">--</span></span>
+          <span>Max: <span id="latMax" class="font-mono text-slate-300">--</span></span>
+        </div>
+      </div>
+
+      <!-- Object Detection Stats -->
+      <div class="glass-card rounded-2xl p-4">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#128200; Top Detections</h2>
+        <div id="objectStats" class="space-y-2 text-sm">
+          <div class="text-slate-600 text-center py-4">Waiting for detections...</div>
+        </div>
+      </div>
+
+      <!-- Activity Timeline -->
+      <div class="glass-card rounded-2xl p-4">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#128337; Activity Timeline</h2>
+        <div id="timelineContent" class="panel-scroll max-h-[280px] space-y-1 text-[11px]">
+          <div class="text-slate-600 text-center py-4">No activity yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 3: Events -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div id="tab-events" class="tab-content">
+    <div class="glass-card rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#128680; YOLO Detection Events</h2>
+        <span class="text-[10px] font-mono text-slate-500">Last 50 events</span>
+      </div>
+      <div id="eventListFull" class="panel-scroll max-h-[500px] text-sm space-y-1">
+        <div class="text-slate-600 text-center py-8">No events detected yet</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 4: Alerts -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div id="tab-alerts" class="tab-content">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Alert Rules -->
+      <div class="glass-card rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#128276; Alert Rules</h2>
+          <span id="alertStats" class="text-[10px] font-mono text-slate-500">0 enabled</span>
+        </div>
+        <div id="alertRulesList" class="space-y-2">
+          <div class="text-slate-600 text-sm text-center py-4">Loading rules...</div>
+        </div>
+      </div>
+      <!-- Alert History -->
+      <div class="glass-card rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#128203; Alert History</h2>
+          <span class="text-[10px] font-mono text-slate-500">Last 20</span>
+        </div>
+        <div id="alertHistory" class="panel-scroll max-h-[400px] space-y-1 text-sm">
+          <div class="text-slate-600 text-center py-8">No alerts triggered yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <!-- TAB 5: Heatmap -->
+  <!-- ════════════════════════════════════════════════════════════════ -->
+  <div id="tab-heatmap" class="tab-content">
+    <div class="glass-card rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#127912; Motion Heatmap</h2>
+        <button class="cta bg-red-600/60 text-white hover:bg-red-500 cta-sm" onclick="resetHeatmap()">&#x1F5D1; Reset</button>
+      </div>
+      <div class="heatmap-wrapper">
+        <img id="heatmapImage" src="" alt="Motion heatmap" class="w-full h-full object-contain" />
+        <div id="heatmapPlaceholder" class="absolute inset-0 flex items-center justify-center text-slate-600 text-sm">
+          Accumulating motion data...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-5 text-center text-[11px] text-slate-700">
+    ESP32-S3 Edge Intelligence Platform v2.0.0 &middot; 
+    <span class="text-slate-600">Scene: <span id="footerScene" class="text-sky-600">--</span></span>
+  </footer>
 </div>
 
-<div id="toast" class="fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white hidden z-50 shadow-2xl"></div>
+<div id="toast" class="fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white hidden z-50 shadow-2xl border-l-4 border-sky-500"></div>
 
 <script>
-// ── Toast ──
+// ── Utilities ──
+function $(id) { return document.getElementById(id); }
 function showToast(msg, type) {
-  const t=document.getElementById('toast'); t.textContent=msg; t.className='fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white z-50 shadow-2xl'; t.style.display='block';
-  t.style.borderLeft='4px solid '+(type==='success'?'#22c55e':type==='error'?'#ef4444':'#3b82f6');
-  setTimeout(()=>t.style.display='none',2500);
+  const t = $('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  t.style.borderLeftColor = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function timeAgo(ts) {
+  const sec = (Date.now() - new Date(ts).getTime()) / 1000;
+  if (sec < 60) return Math.round(sec) + 's ago';
+  return Math.round(sec/60) + 'm ago';
 }
 
-// ── FPS ──
-(function(){const i=document.getElementById('videoFeed');let l=performance.now();i.addEventListener('load',()=>{const n=performance.now(),f=Math.round(1000/(n-l));l=n;document.getElementById('fpsDisplay').textContent=f+' FPS'})})();
+// ── Tab Switching ──
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  $('tab-' + name).classList.add('active');
+  document.querySelector('[data-tab="' + name + '"]').classList.add('active');
+}
 
 // ── Rotation ──
-function setRotation(d){const i=document.getElementById('videoFeed');i.className=d?'rot-'+d:'';document.querySelectorAll('#rotGroup .cta').forEach(b=>b.classList.toggle('active-rot',parseInt(b.dataset.deg)===d))}
+function setRotation(d) {
+  const img = $('videoFeed');
+  img.className = d ? 'rot-' + d : '';
+  document.querySelectorAll('#rotGroup .cta').forEach(b =>
+    b.classList.toggle('active-rot', parseInt(b.dataset.deg) === d)
+  );
+}
 
 // ── Grid ──
-let gridOn=false;
-function toggleGrid(){gridOn=!gridOn;document.getElementById('gridOverlay').classList.toggle('active',gridOn);const b=document.getElementById('gridBtn');b.innerHTML=gridOn?'&#9746; On':'&#9744; Off';b.classList.toggle('bg-sky-600/60',gridOn);b.classList.toggle('bg-slate-700/50',!gridOn)}
+let gridOn = false;
+function toggleGrid() {
+  gridOn = !gridOn;
+  const b = $('gridBtn');
+  b.innerHTML = gridOn ? '&#9746;' : '&#9744;';
+  b.classList.toggle('bg-sky-600/60', gridOn);
+  b.classList.toggle('bg-slate-700/50', !gridOn);
+}
 
 // ── LED ──
-async function setLed(s){try{const r=await fetch('/led',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:s})});const d=await r.json();showToast(d.success?'LED '+s.toUpperCase():'LED failed',d.success?'success':'error')}catch(e){showToast('Error: '+e.message,'error')}}
-async function flashLed(){try{const r=await fetch('/flash?count=5',{method:'POST'});const d=await r.json();showToast(d.success?'Flashing 5 times':'Flash failed',d.success?'success':'error')}catch(e){showToast('Error: '+e.message,'error')}}
+async function setLed(s) {
+  try {
+    const r = await fetch('/led', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: s }) });
+    const d = await r.json();
+    showToast(d.success ? 'LED ' + s.toUpperCase() : 'LED failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+async function flashLed() {
+  try {
+    const r = await fetch('/flash?count=5', { method: 'POST' });
+    const d = await r.json();
+    showToast(d.success ? 'Flashing 5 times' : 'Flash failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
 
 // ── Resolution ──
-async function changeResolution(){const v=document.getElementById('resSelect').value;try{const r=await fetch('/res',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:v})});const d=await r.json();showToast(d.success?'Resolution: '+v:'Resolution failed',d.success?'success':'error')}catch(e){showToast('Error: '+e.message,'error')}}
-function takeSnapshot(){const a=document.createElement('a');a.href='/stream';a.download='snapshot_'+Date.now()+'.jpg';document.body.appendChild(a);a.click();document.body.removeChild(a);showToast('Snapshot saved','success')}
+async function changeResolution() {
+  const v = $('resSelect').value;
+  try {
+    const r = await fetch('/res', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: v }) });
+    const d = await r.json();
+    showToast(d.success ? 'Resolution: ' + v : 'Resolution failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+async function flipCamera(mode) {
+  try {
+    const r = await fetch('/flip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: mode }) });
+    const d = await r.json();
+    showToast(d.success ? 'Flip: ' + (mode === 'v' ? 'vertical' : 'horizontal') : 'Flip failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+function takeSnapshot() {
+  const a = document.createElement('a');
+  a.href = '/stream';
+  a.download = 'snapshot_' + Date.now() + '.jpg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast('Snapshot saved', 'success');
+}
 
 // ── Telemetry ──
-async function fetchTelemetry(){try{const r=await fetch('/telemetry');const d=await r.json();document.getElementById('teleHeap').textContent=d.heap||'--';document.getElementById('teleUptime').textContent=d.uptime||'--';document.getElementById('teleRSSI').textContent=d.rssi||'--';document.getElementById('teleRes').textContent=d.resolution||'--';document.getElementById('telePSRAM').textContent=d.free_psram||'--';document.getElementById('teleTemp').textContent=d.temperature||'--';if(d.resolution)document.getElementById('resDisplay').textContent=d.resolution}catch(e){}}
-setInterval(fetchTelemetry,3000);fetchTelemetry();
+async function fetchTelemetry() {
+  try {
+    const r = await fetch('/telemetry');
+    const d = await r.json();
+    $('teleHeap').textContent = d.heap || '--';
+    $('teleUptime').textContent = d.uptime || '--';
+    $('teleRSSI').textContent = d.rssi || '--';
+    $('teleRes').textContent = d.resolution || '--';
+    $('telePSRAM').textContent = d.free_psram || '--';
+    $('teleTemp').textContent = d.temperature || '--';
+  } catch(e) {}
+}
+setInterval(fetchTelemetry, 3000); fetchTelemetry();
 
 // ── Health ──
-async function fetchHealth(){try{const r=await fetch('/health');const h=await r.json();document.getElementById('healthEsp').className='status-dot '+(h.esp32.connected?'on':'off');document.getElementById('healthOllama').className='status-dot '+(h.ollama.connected?'on':'off')}catch(e){document.getElementById('healthEsp').className='status-dot na';document.getElementById('healthOllama').className='status-dot na'}}
-setInterval(fetchHealth,5000);fetchHealth();
+async function fetchHealth() {
+  try {
+    const r = await fetch('/health');
+    const h = await r.json();
+    $('healthEsp').className = 'status-dot ' + (h.esp32.connected ? 'on' : 'off');
+    $('healthOllama').className = 'status-dot ' + (h.ollama.connected ? 'on' : 'off');
+  } catch(e) {
+    $('healthEsp').className = 'status-dot na';
+    $('healthOllama').className = 'status-dot na';
+  }
+}
+setInterval(fetchHealth, 5000); fetchHealth();
+
+// ── Scene ──
+async function fetchScene() {
+  try {
+    const r = await fetch('/scene');
+    const d = await r.json();
+    const scene = d.current || 'unknown';
+    const badge = $('sceneBadge');
+    badge.textContent = scene.replace(/_/g, ' ');
+    badge.className = 'scene-badge scene-' + scene;
+    $('sceneDisplay').textContent = scene.replace(/_/g, ' ');
+    $('sceneDisplay').className = 'scene-badge scene-' + scene + ' text-[10px] px-3 py-1';
+    $('footerScene').textContent = scene.replace(/_/g, ' ');
+    $('sceneHistory').textContent = (d.history || []).length + ' samples';
+  } catch(e) {}
+}
+setInterval(fetchScene, 4000); fetchScene();
 
 // ── System Status ──
-async function fetchSystemStatus(){try{const r=await fetch('/system-status');const d=await r.json();const a=d.adaptive;document.getElementById('modeDisplay').textContent=a.mode;document.getElementById('modeDisplay').className='font-semibold mode-'+a.mode;document.getElementById('sysMode').textContent=a.mode.toUpperCase();document.getElementById('sysMode').className='text-[10px] font-bold mode-'+a.mode;document.getElementById('sysRSSI').textContent=a.rssy||a.rssi+' dBm';document.getElementById('sysLatency').textContent=a.latency+'s';document.getElementById('sysBuffer').textContent=a.buffer_depth+' frames';document.getElementById('sysAction').textContent=a.last_action||'--'}catch(e){}}
-setInterval(fetchSystemStatus,3000);fetchSystemStatus();
+async function fetchSystemStatus() {
+  try {
+    const r = await fetch('/system-status');
+    const d = await r.json();
+    const a = d.adaptive;
+    $('modeDisplay').textContent = a.mode;
+    $('modeDisplay').className = 'font-semibold mode-' + a.mode + ' text-[11px]';
+    $('statsDetections').textContent = d.gatekeeper?.detections || 0;
+    $('statsClasses').textContent = d.metrics?.points || 0;
+  } catch(e) {}
+}
+setInterval(fetchSystemStatus, 3000); fetchSystemStatus();
 
 // ── Models ──
-async function loadModels(){try{const r=await fetch('/models');const d=await r.json();const s=document.getElementById('modelSelect');const c=s.value||'gemma3:latest';s.innerHTML=d.models.map(m=>'<option value="'+m+'"'+(m===c?'selected':'')+'>'+m+'</option>').join('')}catch(e){}}
-async function changeModel(){const m=document.getElementById('modelSelect').value;try{const r=await fetch('/model',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:m})});const d=await r.json();showToast('Model: '+d.model,'success')}catch(e){showToast('Model change failed','error')}}
+async function loadModels() {
+  try {
+    const r = await fetch('/models');
+    const d = await r.json();
+    const s = $('modelSelect');
+    const c = s.value || 'gemma3:latest';
+    s.innerHTML = d.models.map(m => '<option value="' + m + '"' + (m === c ? ' selected' : '') + '>' + m + '</option>').join('');
+  } catch(e) {}
+}
+async function changeModel() {
+  const m = $('modelSelect').value;
+  try {
+    const r = await fetch('/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: m }) });
+    const d = await r.json();
+    showToast('Model: ' + d.model, 'success');
+  } catch(e) { showToast('Model change failed', 'error'); }
+}
 loadModels();
 
-async function changeInterval(){const v=parseFloat(document.getElementById('intervalSelect').value);try{await fetch('/interval',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({interval:v})});showToast('Interval: '+v+'s','success')}catch(e){showToast('Interval change failed','error')}}
+async function changeInterval() {
+  const v = parseFloat($('intervalSelect').value);
+  try {
+    await fetch('/interval', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: v }) });
+    showToast('Interval: ' + v + 's', 'success');
+  } catch(e) { showToast('Interval change failed', 'error'); }
+}
 
-async function forceAnalysis(){const st=document.getElementById('analysisStatus');st.textContent='analyzing...';st.className='text-[10px] font-mono text-sky-400 typing';document.getElementById('analysisContent').innerHTML='<div class="text-sm text-slate-500 fade-in">Requesting analysis&hellip;</div>';try{await fetch('/analyze-now',{method:'POST'})}catch(e){showToast('Analysis request failed','error')}}
+async function forceAnalysis() {
+  const st = $('analysisStatus');
+  st.textContent = 'analyzing...';
+  st.className = 'text-[10px] font-mono text-sky-400 typing';
+  $('analysisContent').innerHTML = '<div class="text-sm text-slate-500 fade-in">Requesting analysis...</div>';
+  try { await fetch('/analyze-now', { method: 'POST' }); } catch(e) { showToast('Analysis request failed', 'error'); }
+}
 
-function clearAnalysis(){document.getElementById('analysisContent').innerHTML='<div class="flex items-center justify-center h-full text-slate-600 text-sm"><span>Cleared</span></div>';document.getElementById('analysisStatus').textContent='cleared';document.getElementById('analysisStatus').className='text-[10px] font-mono text-slate-600'}
+function clearAnalysis() {
+  $('analysisContent').innerHTML = '<div class="flex items-center justify-center h-full text-slate-600 text-sm"><span>Cleared</span></div>';
+  $('analysisStatus').textContent = 'cleared';
+  $('analysisStatus').className = 'text-[10px] font-mono text-slate-600';
+}
 
 // ── SSE Analysis ──
-(function(){const c=document.getElementById('analysisContent');const st=document.getElementById('analysisStatus');const ms=document.getElementById('analysisModel');let es=null;let lastT=0;function connect(){if(es)es.close();es=new EventSource('/analysis');es.onmessage=function(e){try{const d=JSON.parse(e.data);if(d.text){lastT=Date.now();if(d.boss){c.innerHTML='<div class="boss-mode-shake fade-in text-center py-4"><div class="text-3xl font-black text-red-500 uppercase tracking-wide leading-relaxed drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]">'+esc(d.text)+'</div></div>';st.textContent='BOSS MODE';st.className='text-[10px] font-mono font-bold text-red-400';ms.textContent='☠️ '+d.model;c.style.overflow='hidden'}else{const l=d.text.split('\n').filter(l=>l.trim());c.innerHTML=l.map((l,i)=>'<div class="fade-in text-sm '+(i===0?'font-medium text-white':'text-slate-300')+' leading-relaxed mb-2">'+esc(l)+'</div>').join('');st.textContent='updated';st.className='text-[10px] font-mono text-green-400';if(d.model)ms.textContent=d.model;setTimeout(()=>{if(st.textContent==='updated'){st.textContent='live';st.className='text-[10px] font-mono text-slate-500'}},2000)}}}catch(e){}};es.onerror=function(){st.textContent='reconnecting...';st.className='text-[10px] font-mono text-amber-400';setTimeout(connect,3000)}}function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}connect();setInterval(()=>{const iv=parseInt(document.getElementById('intervalSelect').value||5);const r=Math.max(0,iv-(Date.now()-lastT)/1000);document.getElementById('countdownDisplay').textContent=r.toFixed(1)},500)})();
+(function() {
+  const c = $('analysisContent');
+  const st = $('analysisStatus');
+  const ms = $('analysisModel');
+  let es = null;
+  let lastT = 0;
+  function connect() {
+    if (es) es.close();
+    es = new EventSource('/analysis');
+    es.onmessage = function(e) {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.text) {
+          lastT = Date.now();
+          if (d.boss) {
+            c.innerHTML = '<div class="boss-mode-shake fade-in text-center py-4"><div class="text-3xl font-black text-red-500 uppercase tracking-wide leading-relaxed drop-shadow-[0_0_20px_rgba(239,68,68,0.6)]">' + esc(d.text) + '</div></div>';
+            st.textContent = 'BOSS MODE';
+            st.className = 'text-[10px] font-mono font-bold text-red-400';
+            ms.textContent = '\u2620\uFE0F ' + d.model;
+            c.style.overflow = 'hidden';
+          } else {
+            const l = d.text.split('\n').filter(l => l.trim());
+            c.innerHTML = l.map((l, i) => '<div class="fade-in text-sm ' + (i === 0 ? 'font-medium text-white' : 'text-slate-300') + ' leading-relaxed mb-1">' + esc(l) + '</div>').join('');
+            st.textContent = 'updated';
+            st.className = 'text-[10px] font-mono text-green-400';
+            if (d.model) ms.textContent = d.model;
+            setTimeout(() => {
+              if (st.textContent === 'updated') { st.textContent = 'live'; st.className = 'text-[10px] font-mono text-slate-500'; }
+            }, 2000);
+          }
+        }
+      } catch(e) {}
+    };
+    es.onerror = function() {
+      st.textContent = 'reconnecting...';
+      st.className = 'text-[10px] font-mono text-amber-400';
+      setTimeout(connect, 3000);
+    };
+  }
+  connect();
+  setInterval(() => {
+    const iv = parseInt($('intervalSelect').value || 5);
+    const r = Math.max(0, iv - (Date.now() - lastT) / 1000);
+    $('countdownDisplay').textContent = r.toFixed(1);
+  }, 500);
+})();
 
-// ── Semantic Search ──
-async function doSearch(){const q=document.getElementById('searchInput').value.trim();if(!q){showToast('Enter a search query','error');return}const res=document.getElementById('searchResults');const st=document.getElementById('searchStatus');res.innerHTML='<div class="text-xs text-slate-500 text-center py-4">Searching&hellip;</div>';st.textContent='';try{const r=await fetch('/search?q='+encodeURIComponent(q)+'&top_k=8');const d=await r.json();st.textContent='Index: '+d.index.index_count+' frames | Query: "'+q+'"';if(!d.results||d.results.length===0){res.innerHTML='<div class="text-xs text-slate-600 text-center py-4">No matches found. Frame index may be empty.</div>';return}res.innerHTML=d.results.map((r,i)=>'<div class="fade-in flex items-center justify-between py-1.5 border-b border-white/5 last:border-0"><span class="text-xs text-slate-300">#'+r.frame_id+'</span><span class="text-[10px] text-slate-500">'+(r.score*100).toFixed(1)+'%</span></div>').join('')}catch(e){res.innerHTML='<div class="text-xs text-red-400 text-center py-4">Search failed</div>';showToast('Search error','error')}}
+// ── FPS Counter ──
+(function() {
+  const img = $('videoFeed');
+  let last = performance.now();
+  img.addEventListener('load', () => {
+    const now = performance.now();
+    const fps = Math.round(1000 / (now - last));
+    last = now;
+    $('fpsDisplay').textContent = fps + ' FPS';
+  });
+})();
+
+// ── Charts ──
+let fpsChart = null;
+let latencyChart = null;
+
+function initCharts() {
+  const ctx1 = document.getElementById('fpsChart').getContext('2d');
+  fpsChart = new Chart(ctx1, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'FPS', data: [], borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 300 }, scales: { x: { display: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', font: { size: 10 } } }, y: { display: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', font: { size: 10 } } } }, plugins: { legend: { display: false } } }
+  });
+  const ctx2 = document.getElementById('latencyChart').getContext('2d');
+  latencyChart = new Chart(ctx2, {
+    type: 'line',
+    data: { labels: [], datasets: [{ label: 'Latency', data: [], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, animation: { duration: 300 }, scales: { x: { display: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', font: { size: 10 } } }, y: { display: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#475569', font: { size: 10 } } } }, plugins: { legend: { display: false } } }
+  });
+}
+
+async function updateCharts() {
+  try {
+    const r = await fetch('/metrics?metric=all&limit=60');
+    const d = await r.json();
+    const series = d.series || [];
+    const labels = series.map(p => (p.t || 0).toFixed(0) + 's');
+    const fpsData = series.map(p => p.fps || 0);
+    const latData = series.map(p => p.latency || 0);
+    if (fpsChart) { fpsChart.data.labels = labels; fpsChart.data.datasets[0].data = fpsData; fpsChart.update('none'); }
+    if (latencyChart) { latencyChart.data.labels = labels; latencyChart.data.datasets[0].data = latData; latencyChart.update('none'); }
+    if (d.summary) {
+      $('fpsAvg').textContent = d.summary.fps_avg || '--';
+      $('fpsMin').textContent = d.summary.fps_min || '--';
+      $('fpsMax').textContent = d.summary.fps_max || '--';
+      $('latAvg').textContent = d.summary.latency_avg || '--';
+      $('latMax').textContent = d.summary.latency_max || '--';
+    }
+  } catch(e) {}
+}
+setInterval(updateCharts, 3000);
+
+// ── Object Stats ──
+async function fetchStats() {
+  try {
+    const r = await fetch('/stats');
+    const d = await r.json();
+    const counts = d.counts || {};
+    const keys = Object.keys(counts);
+    if (keys.length === 0) {
+      $('objectStats').innerHTML = '<div class="text-slate-600 text-center py-4 text-sm">No detections yet</div>';
+      return;
+    }
+    const maxVal = Math.max(...Object.values(counts));
+    $('objectStats').innerHTML = keys.slice(0, 10).map(k => {
+      const pct = (counts[k] / maxVal * 100).toFixed(0);
+      return '<div><div class="flex justify-between text-xs mb-1"><span class="text-slate-300">' + k + '</span><span class="text-slate-500">' + counts[k] + '</span></div><div class="h-2 bg-slate-800 rounded-full overflow-hidden"><div class="h-full bg-sky-500 rounded-full" style="width:' + pct + '%"></div></div></div>';
+    }).join('');
+  } catch(e) {}
+}
+setInterval(fetchStats, 4000); fetchStats();
+
+// ── Timeline ──
+async function fetchTimeline() {
+  try {
+    const r = await fetch('/timeline?limit=30');
+    const d = await r.json();
+    const entries = d.entries || [];
+    if (entries.length === 0) {
+      $('timelineContent').innerHTML = '<div class="text-slate-600 text-center py-4 text-xs">No activity yet</div>';
+      return;
+    }
+    $('timelineContent').innerHTML = entries.slice(-20).reverse().map(e => {
+      const type = e.type || 'event';
+      const meta = e.metadata || {};
+      const objs = meta.objects || [];
+      const label = objs.length > 0 ? objs.map(o => o.class).join(', ') : type.replace(/_/g, ' ');
+      const time = new Date(e.timestamp).toLocaleTimeString();
+      const isAlert = type.startsWith('alert_');
+      const isDetection = type === 'detection';
+      const dotColor = isAlert ? 'bg-red-500' : isDetection ? 'bg-sky-500' : 'bg-slate-600';
+      return '<div class="flex gap-2 items-start fade-in"><div class="timeline-dot ' + dotColor + '"></div><div class="flex-1 min-w-0"><div class="text-xs text-slate-300 truncate">' + esc(label) + '</div><div class="text-[10px] text-slate-600">' + time + '</div></div></div>';
+    }).join('');
+  } catch(e) {}
+}
+setInterval(fetchTimeline, 4000); fetchTimeline();
 
 // ── Events ──
-async function fetchEvents(){try{const r=await fetch('/events?limit=20');const d=await r.json();const el=document.getElementById('eventList');const ec=document.getElementById('eventCount');if(!d.events||d.events.length===0){el.innerHTML='<div class="text-xs text-slate-600 text-center py-4">No events yet</div>';ec.textContent='0';return}ec.textContent=d.events.length;el.innerHTML=d.events.slice(0,15).map(e=>{const objs=e.objects.map(o=>o.class+' ('+(o.confidence*100).toFixed(0)+'%)').join(', ');const sev=e.objects.some(o=>['person','dog','cat','car','laptop'].includes(o.class))?'high':'medium';const t=new Date(e.timestamp).toLocaleTimeString();return'<div class="event-item '+sev+' fade-in"><div class="flex items-center justify-between"><span class="text-xs text-slate-300 font-medium">'+objs+'</span><span class="text-[10px] text-slate-600">'+t+'</span></div></div>'}).join('')}catch(e){}}
-setInterval(fetchEvents,3000);fetchEvents();
+async function fetchEvents() {
+  try {
+    const r = await fetch('/events?limit=30');
+    const d = await r.json();
+    const events = d.events || [];
+    // Quick view
+    const el = $('eventList');
+    const ec = $('eventCount');
+    if (events.length === 0) {
+      el.innerHTML = '<div class="text-slate-600 text-center py-4 text-xs">No events yet</div>';
+      ec.textContent = '0';
+    } else {
+      ec.textContent = events.length;
+      el.innerHTML = events.slice(-10).reverse().map(e => {
+        const objs = e.objects.map(o => o.class).join(', ');
+        const sev = e.objects.some(o => ['person','dog','cat','car','laptop','cell phone'].includes(o.class)) ? 'high' : 'medium';
+        const t = new Date(e.timestamp).toLocaleTimeString();
+        return '<div class="event-item ' + sev + ' fade-in"><div class="flex items-center justify-between"><span class="text-xs text-slate-300 font-medium truncate">' + esc(objs) + '</span><span class="text-[10px] text-slate-600 flex-shrink-0 ml-2">' + t + '</span></div></div>';
+      }).join('');
+    }
+    // Full list
+    const efl = $('eventListFull');
+    if (events.length === 0) {
+      efl.innerHTML = '<div class="text-slate-600 text-center py-8">No events detected yet</div>';
+    } else {
+      efl.innerHTML = events.slice(-30).reverse().map(e => {
+        const objs = e.objects.map(o => '<span class="bg-sky-600/20 text-sky-400 px-2 py-0.5 rounded text-[11px] font-medium">' + o.class + ' (' + (o.confidence * 100).toFixed(0) + '%)</span>').join(' ');
+        const t = new Date(e.timestamp).toLocaleTimeString();
+        return '<div class="fade-in border-b border-white/5 py-2 flex items-center justify-between"><div class="flex gap-1.5 flex-wrap">' + objs + '</div><span class="text-[10px] text-slate-600 flex-shrink-0">' + t + '</span></div>';
+      }).join('');
+    }
+  } catch(e) {}
+}
+setInterval(fetchEvents, 3000); fetchEvents();
 
-// ── Interactive Edge Queue Simulator ──
-function runSim(){const rssi=parseInt(document.getElementById('simRSSI').value);const lat=parseInt(document.getElementById('simLat').value);const fps=parseInt(document.getElementById('simFPS').value);document.getElementById('simRSSIVal').textContent=rssi+' dBm';document.getElementById('simLatVal').textContent=lat+'s';document.getElementById('simFPSVal').textContent=fps;const frameInterval=1/fps;const queueGrowth=lat*fps;let mode='NORMAL',color='text-green-400',queue=0;if(rssi<-85||lat>30||queueGrowth>60){mode='EMERGENCY';color='text-red-400';queue=Math.min(queueGrowth,120)}else if(rssi<-70||lat>15||queueGrowth>25){mode='THROTTLED';color='text-amber-400';queue=Math.min(queueGrowth,45)}else{queue=Math.max(0,queueGrowth-10)}document.getElementById('simResult').innerHTML='Mode: <span class="'+color+' font-bold">'+mode+'</span> &middot; Queue: <span class="text-slate-300">'+Math.round(queue)+'</span> frames &middot; FPS: '+fps+' &middot; Lat: '+lat+'s'}
-runSim();
+// ── Alerts ──
+async function fetchAlerts() {
+  try {
+    const r = await fetch('/alerts');
+    const d = await r.json();
+    const rules = d.rules || [];
+    const history = d.history || [];
+    const stats = d.stats || {};
+    $('alertStats').textContent = stats.enabled_alerts + '/' + stats.total_alerts + ' enabled';
+    if (rules.length === 0) {
+      $('alertRulesList').innerHTML = '<div class="text-slate-600 text-sm text-center py-4">No rules</div>';
+    } else {
+      $('alertRulesList').innerHTML = rules.map((rule, i) =>
+        '<div class="alert-rule-card fade-in"><div class="flex items-center justify-between"><div><div class="text-sm font-medium text-slate-200">' + esc(rule.name) + '</div><div class="text-[11px] text-slate-500">' + esc(rule.class_name) + ' &middot; conf &ge; ' + rule.min_confidence + ' &middot; cooldown ' + rule.cooldown + 's</div></div><div class="toggle-switch ' + (rule.enabled ? 'active' : '') + '" onclick="toggleAlert(' + i + ')"></div></div></div>'
+      ).join('');
+    }
+    if (history.length === 0) {
+      $('alertHistory').innerHTML = '<div class="text-slate-600 text-center py-8 text-sm">No alerts triggered yet</div>';
+    } else {
+      $('alertHistory').innerHTML = history.slice(-20).reverse().map(a =>
+        '<div class="fade-in border-b border-white/5 py-2 flex items-center justify-between text-sm"><span class="text-red-400 font-medium">' + esc(a.rule) + '</span><span class="text-[10px] text-slate-600">' + new Date(a.timestamp).toLocaleTimeString() + '</span></div>'
+      ).join('');
+    }
+  } catch(e) {}
+}
+setInterval(fetchAlerts, 4000); fetchAlerts();
+
+async function toggleAlert(idx) {
+  try {
+    const r = await fetch('/alerts');
+    const d = await r.json();
+    const rule = d.rules[idx];
+    if (!rule) return;
+    rule.enabled = !rule.enabled;
+    await fetch('/alerts/' + idx, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rule) });
+    fetchAlerts();
+    showToast(rule.name + ': ' + (rule.enabled ? 'enabled' : 'disabled'), 'success');
+  } catch(e) {}
+}
+
+// ── Heatmap ──
+async function fetchHeatmap() {
+  try {
+    const r = await fetch('/heatmap');
+    const d = await r.json();
+    if (d.heatmap) {
+      $('heatmapImage').src = 'data:image/jpeg;base64,' + d.heatmap;
+      $('heatmapImage').style.display = 'block';
+      $('heatmapPlaceholder').style.display = 'none';
+    }
+  } catch(e) {}
+}
+setInterval(fetchHeatmap, 5000); fetchHeatmap();
+
+async function resetHeatmap() {
+  try {
+    await fetch('/heatmap/reset', { method: 'POST' });
+    $('heatmapImage').style.display = 'none';
+    $('heatmapPlaceholder').style.display = 'flex';
+    showToast('Heatmap reset', 'success');
+  } catch(e) {}
+}
 
 // ── Keyboard ──
-document.addEventListener('keydown',e=>{if(e.key==='s'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();takeSnapshot()}if(e.key==='g'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();toggleGrid()}if(e.key==='r'&&!e.shiftKey&&!e.ctrlKey&&!e.metaKey){e.preventDefault();document.querySelector('#rotGroup .cta[data-deg="90"]')?.click()}if(e.key==='0'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();setRotation(0)}if(e.key==='n'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();forceAnalysis()}if(e.key==='/'&&!e.ctrlKey&&!e.metaKey){e.preventDefault();document.getElementById('searchInput').focus()}});
+document.addEventListener('keydown', e => {
+  if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); takeSnapshot(); }
+  if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    const opts = ['QQVGA','QVGA','VGA','CIF','SVGA','UXGA'];
+    const idx = parseInt(e.key) - 1;
+    if (opts[idx]) { $('resSelect').value = opts[idx]; changeResolution(); }
+  }
+  if (e.key === 'r' && !e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.querySelector('#rotGroup .cta[data-deg="90"]')?.click(); }
+  if (e.key === '0' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setRotation(0); }
+  if (e.key === 'n' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); forceAnalysis(); }
+  if (e.key === 'g' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleGrid(); }
+  if (e.key === 'l' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setLed('on'); }
+  if (e.key === 'L' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); flashLed(); }
+});
+
+// ── Init Charts after DOM ──
+document.addEventListener('DOMContentLoaded', initCharts);
+if (document.readyState !== 'loading') initCharts();
 </script>
 </body>
 </html>

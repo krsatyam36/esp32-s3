@@ -16,6 +16,7 @@ __pycache__/
 *.pyc
 snapshots/
 recordings/
+chroma_db/
 .DS_Store
 *.log
 .vscode/

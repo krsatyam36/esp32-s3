@@ -7,6 +7,7 @@
 #include "dashboard_html.h"
 
 #define PART_BOUNDARY "123456789000000000000987654321"
+#define FIRMWARE_VERSION "1.3.0"
 #define LED_BUILTIN 21
 
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
@@ -85,6 +86,38 @@ static esp_err_t snapshot_handler(httpd_req_t *req) {
 }
 
 // ==================== RESOLUTION ====================
+
+static esp_err_t flip_handler(httpd_req_t *req) {
+    char buf[16];
+    if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing query");
+        return ESP_FAIL;
+    }
+    char mode[8];
+    if (httpd_query_key_value(buf, "mode", mode, sizeof(mode)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing mode");
+        return ESP_FAIL;
+    }
+    sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No sensor");
+        return ESP_FAIL;
+    }
+    if (strcmp(mode, "v") == 0) {
+        s->set_vflip(s, s->status.vflip ? 0 : 1);
+    } else if (strcmp(mode, "h") == 0) {
+        s->set_hmirror(s, s->status.hmirror ? 0 : 1);
+    } else {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid mode (use v or h)");
+        return ESP_FAIL;
+    }
+    char json[64];
+    snprintf(json, sizeof(json), "{\"success\":true,\"vflip\":%d,\"hmirror\":%d}",
+             s->status.vflip, s->status.hmirror);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
 
 static esp_err_t resolution_handler(httpd_req_t *req) {
     char buf[16];
@@ -183,19 +216,26 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
     uint32_t heap = ESP.getFreeHeap();
     uint32_t psram = ESP.getFreePsram();
     float temp = temperatureRead();
+    uint32_t total_psram = ESP.getPsramSize();
 
     snprintf(json, sizeof(json),
         "{"
         "\"heap\":%lu,"
         "\"uptime\":%lu,"
         "\"rssi\":%d,"
-        "\"ip\":\"%s\","
         "\"resolution\":\"%s\","
         "\"free_psram\":%lu,"
-        "\"temperature\":%.1f"
+        "\"total_psram\":%lu,"
+        "\"temperature\":%.1f,"
+        "\"ip\":\"%s\","
+        "\"chip_id\":\"%s\","
+        "\"cpu_freq\":%d"
         "}",
-        heap, uptime_sec, rssi, WiFi.localIP().toString().c_str(),
-        resolutionToString(current_resolution), psram, temp);
+        heap, uptime_sec, rssi, resolutionToString(current_resolution),
+        psram, total_psram, temp,
+        WiFi.localIP().toString().c_str(),
+        String((uint32_t)ESP.getEfuseMac(), HEX).c_str(),
+        ESP.getCpuFreqMHz());
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
@@ -204,11 +244,47 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
 
 // ==================== PING / HEALTH ====================
 
+static esp_err_t diag_handler(httpd_req_t *req) {
+    char json[512];
+    snprintf(json, sizeof(json),
+        "{"
+        "\"chip_model\":\"%s\","
+        "\"chip_cores\":%d,"
+        "\"cpu_freq\":%d,"
+        "\"flash_size\":%lu,"
+        "\"psram_size\":%lu,"
+        "\"free_heap\":%lu,"
+        "\"free_psram\":%lu,"
+        "\"sketch_size\":%lu,"
+        "\"free_sketch\":%lu,"
+        "\"sdk_version\":\"%s\","
+        "\"firmware_version\":\"%s\","
+        "\"uptime\":%lu,"
+        "\"wifi_rssi\":%d"
+        "}",
+        ESP.getChipModel(),
+        ESP.getChipCores(),
+        ESP.getCpuFreqMHz(),
+        ESP.getFlashChipSize(),
+        ESP.getPsramSize(),
+        ESP.getFreeHeap(),
+        ESP.getFreePsram(),
+        ESP.getSketchSize(),
+        ESP.getFreeSketchSpace(),
+        ESP.getSdkVersion(),
+        FIRMWARE_VERSION,
+        millis() / 1000,
+        WiFi.RSSI());
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
 static esp_err_t ping_handler(httpd_req_t *req) {
     char json[128];
     snprintf(json, sizeof(json),
-        "{\"status\":\"ok\",\"ip\":\"%s\",\"uptime\":%lu}",
-        WiFi.localIP().toString().c_str(), millis() / 1000);
+        "{\"status\":\"ok\",\"uptime\":%lu,\"ip\":\"%s\"}",
+        millis() / 1000, WiFi.localIP().toString().c_str());
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
@@ -247,6 +323,12 @@ void startWebServer() {
         .handler = resolution_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t flip_uri = {
+        .uri = "/flip",
+        .method = HTTP_GET,
+        .handler = flip_handler,
+        .user_ctx = NULL
+    };
     httpd_uri_t led_uri = {
         .uri = "/led",
         .method = HTTP_GET,
@@ -271,6 +353,12 @@ void startWebServer() {
         .handler = ping_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t diag_uri = {
+        .uri = "/diag",
+        .method = HTTP_GET,
+        .handler = diag_handler,
+        .user_ctx = NULL
+    };
     httpd_uri_t dashboard_uri = {
         .uri = "/dashboard",
         .method = HTTP_GET,
@@ -283,10 +371,12 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &stream_uri);
         httpd_register_uri_handler(stream_httpd, &snapshot_uri);
         httpd_register_uri_handler(stream_httpd, &res_uri);
+        httpd_register_uri_handler(stream_httpd, &flip_uri);
         httpd_register_uri_handler(stream_httpd, &led_uri);
         httpd_register_uri_handler(stream_httpd, &flash_uri);
         httpd_register_uri_handler(stream_httpd, &telemetry_uri);
         httpd_register_uri_handler(stream_httpd, &ping_uri);
+        httpd_register_uri_handler(stream_httpd, &diag_uri);
         httpd_register_uri_handler(stream_httpd, &dashboard_uri);
         Serial.println("Server started with all endpoints");
     } else {
