@@ -3,6 +3,10 @@
 #include <esp_camera.h>
 #include <Arduino.h>
 
+/*
+ * XIAO ESP32S3 Sense — OV2640 Camera Pin Mapping
+ * See also: https://wiki.seeedstudio.com/xiao_esp32s3_camera/
+ */
 #define PWDN_GPIO_NUM     -1
 #define RESET_GPIO_NUM    -1
 #define XCLK_GPIO_NUM     10
