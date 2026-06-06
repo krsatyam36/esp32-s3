@@ -2,7 +2,7 @@
 
 # Seeed XIAO ESP32S3 Sense — Edge Intelligence Platform
 
-**v2.0.0** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller, scene classification, activity timeline, object counting, smart alerts, motion heatmap*
+**v1.3.1** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller*
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1+-F58220?style=flat&logo=platformio&logoColor=white)](https://platformio.org)
 [![ESP32](https://img.shields.io/badge/ESP32-S3-E7352C?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com)
@@ -78,26 +78,12 @@ It includes:
 - 👁 **YOLO event gatekeeper** — real-time object detection triggering LLM analysis
 - ⚡ **Adaptive rate controller** — auto-adjusts resolution & interval based on RSSI/latency
 - ☠️ **Boss Mode** — detects cell phone distraction & roasts you via LLM + TTS
-- 🏠 **Scene classification** — real-time scene analysis (indoor/outdoor/night/crowded) using CV heuristics, no ML dependency
-- 📋 **Activity timeline** — tracks detection events with duration and creates a searchable timeline
-- 🔢 **Object counting** — cumulative detection statistics with top-N class tracking
-- 🔔 **Smart alert system** — configurable rules with per-class confidence thresholds and cooldown
-- 📈 **Performance metrics history** — ring buffer of FPS/latency/queue depth for real-time charts
-- 🌡️ **Motion heatmap** — accumulates motion regions with exponential decay into a visual heatmap
 - ❤️ **Health endpoint** — `/ping` for connectivity checks
 - 🩺 **Camera diagnostics** — detailed init failure reporting with automatic fallback
 - 🔁 **Exponential backoff reconnect** — resilient stream recovery in viewer
 - 🖼️ **Frame dimensions** — displayed in viewer window title
 - 🧪 **Stream test script** — `stream_test.py` for quick connectivity check
-- 🎛️ **CLI arguments** — override IP, port, and model via `--ip` command line argument
-- 🧰 **Makefile** — `make viewer`, `make server`, `make vision`, `make test`, `make check` for quick commands
-- ✅ **Setup validation** — `python src/check_deps.py` verifies all dependencies and configuration
-- 🔄 **Camera flip/mirror** — toggle vertical flip and horizontal mirror from the dashboard
-- 🏥 **Diagnostics endpoint** — `/diag` returns full chip info, firmware version, and system health
-- 📊 **Aggregated dashboard** — `/dashboard-data` returns all telemetry in a single call
-- 📊 **Analytics dashboard** — real-time FPS and latency charts via Chart.js
-- 🔄 **Tabbed UI** — organized panels for Dashboard, Analytics, Events, Alerts, and Heatmap
-- ⚙️ **Alert rules management** — enable/disable alert rules directly from the web UI
+- 🎛️ **CLI arguments** — override IP, port, and model via command line
 
 ## System Prerequisites
 
@@ -276,14 +262,11 @@ The dashboard provides the same controls through a polished web UI: view the liv
 
 | Key | Action |
 |-----|--------|
-| `s` | Take snapshot |
+| `f` | Toggle fullscreen |
 | `r` | Rotate stream right |
+| `R` | Rotate stream left |
 | `0` | Reset rotation |
-| `g` | Toggle grid overlay |
-| `l` | LED on |
-| `L` | Flash LED |
-| `n` | Force AI analysis |
-| `1`–`6` | Set resolution (QQVGA..UXGA) |
+| `s` | Take snapshot |
 | `Esc` | Exit fullscreen |
 
 ### 8. (Optional) OTA Firmware Updates
@@ -322,21 +305,7 @@ You will be prompted to select a model and analysis interval. The video window s
 | `g` | Toggle rule-of-thirds grid overlay |
 | `h` | Show controls in terminal |
 
-### 10. Makefile Commands
-
-A `Makefile` is provided for convenience:
-
-```bash
-make viewer        # Run OpenCV viewer (set ESP_IP=http://... to override)
-make server        # Run FastAPI web server
-make vision        # Run Vision LLM CLI
-make test          # Run connectivity test
-make upload        # Upload firmware via USB
-make ota           # Upload firmware via OTA
-make monitor       # Open serial monitor
-```
-
-### 11. FastAPI Server (app.py)
+### 10. FastAPI Server (app.py)
 
 The FastAPI server provides a web dashboard with all AI features:
 
@@ -348,18 +317,13 @@ python src/app.py --ip http://192.168.1.X/ --port 8000 --model gemma3:latest
 
 Open **http://localhost:8000** in your browser.
 
-**Web dashboard features (tabbed UI):**
+**Web dashboard features:**
 - Live MJPEG stream with grid overlay & rotation controls
 - AI Vision panel with model selector, analysis interval, and real-time LLM results
 - YOLO event log showing detected objects with confidence and severity
 - Semantic search — search archived frames by natural language
 - Adaptive controller status — shows current mode (normal/throttled/emergency)
-- ESP32 controls — LED, 6-level resolution, telemetry, snapshots
-- **Scene classification** — real-time indoor/outdoor/night/crowded detection
-- **Analytics tab** — FPS & latency charts (Chart.js), object detection stats, activity timeline
-- **Events tab** — full YOLO detection event log
-- **Alerts tab** — configurable alert rules with enable/disable and history
-- **Heatmap tab** — motion heatmap visualization with reset
+- ESP32 controls — LED, resolution, telemetry, snapshots
 
 **REST API Endpoints:**
 
@@ -372,24 +336,13 @@ Open **http://localhost:8000** in your browser.
 | `/interval` | POST | Set analysis interval |
 | `/events` | GET | YOLO detection events |
 | `/search` | GET/POST | Semantic video search |
-| `/system-status` | GET | Full system status with all subsystems |
+| `/system-status` | GET | Full system status |
 | `/health` | GET | ESP32 + Ollama connectivity |
-| `/telemetry` | GET | ESP32 telemetry proxy (includes IP, chip info) |
+| `/telemetry` | GET | ESP32 telemetry proxy (includes IP) |
 | `/led` | POST | Toggle LED |
 | `/res` | POST | Set resolution (QQVGA/QVGA/VGA/CIF/SVGA/UXGA) |
 | `/models` | GET | Available Ollama models |
 | `/ping` | GET | Health check (status, IP, uptime) |
-| `/scene` | GET | Current scene classification + history |
-| `/timeline` | GET | Activity timeline entries and active events |
-| `/stats` | GET | Object counting statistics and top classes |
-| `/alerts` | GET | Alert rules, history, and stats |
-| `/alerts/{idx}` | PUT/DELETE | Update or delete alert rule |
-| `/metrics` | GET | Performance metrics time series |
-| `/heatmap` | GET | Motion heatmap as base64 JPEG |
-| `/heatmap/reset` | POST | Reset accumulated motion heatmap |
-| `/flip` | POST | Toggle camera vflip or hmirror |
-| `/diag` | GET | Full ESP32 diagnostics (chip, flash, PSRAM, SDK) |
-| `/dashboard-data` | GET | Aggregated telemetry for frontend |
 
 ## Boss Mode
 
@@ -502,14 +455,12 @@ The ESP32 exposes these REST endpoints:
 |----------|--------|-------------|
 | `/` | GET | MJPEG stream |
 | `/snapshot` | GET | Single JPEG frame |
-| `/res?val=QQVGA|QVGA|VGA|CIF|SVGA|UXGA` | GET | Change camera resolution (6 levels) |
+| `/res?val=QQVGA|QVGA|VGA|CIF|SVGA|UXGA` | GET | Change camera resolution |
 | `/led?state=on|off` | GET | Toggle built-in LED |
 | `/flash?count=N` | GET | Flash LED N times (1-20) |
-| `/telemetry` | GET | JSON: heap, uptime, RSSI, IP, resolution, PSRAM, total_PSRAM, temperature, chip_id, cpu_freq, camera_init_attempts, framesize |
-| `/ping` | GET | Health check: status, uptime, IP |
-| `/diag` | GET | Full chip diagnostics: model, cores, flash, PSRAM, SDK, firmware version |
-| `/flip?mode=v|h` | GET | Toggle vertical flip (v) or horizontal mirror (h) |
-| `/dashboard` | GET | Full web dashboard (embedded) |
+| `/telemetry` | GET | JSON: heap, uptime, RSSI, IP, resolution, PSRAM, temperature |
+| `/ping` | GET | Health check: status, IP, uptime |
+| `/dashboard` | GET | Full web dashboard |
 
 ## Troubleshooting
 
@@ -534,33 +485,31 @@ The ESP32 exposes these REST endpoints:
 
 ```
 .
-├── Makefile                 # Common dev commands (`make viewer`, etc.)
 ├── platformio.ini           # Board & PSRAM configuration
 ├── README.md                # This documentation
 ├── __pycache__/             # Python bytecode cache (gitignored)
 ├── recordings/              # Captured video storage
 ├── snapshots/               # Captured image storage
-├── chroma_db/               # ChromaDB persistent store (gitignored)
 ├── lib/                     # Private libraries
 ├── test/                    # PlatformIO test runner
 ├── testing/                 # Manual test documentation
 ├── include/                 # C++ firmware headers
-│   ├── camera_utils.h       # Camera init, diagnostics, 6-level resolution
+│   ├── camera_utils.h       # Camera init, resolution switching (QQVGA–UXGA)
 │   ├── wifi_manager.h       # WiFi connect with auto-reconnect
 │   ├── ota_manager.h        # Over-the-air updates
 │   ├── web_server.h         # HTTP server + all API handlers (incl. /ping)
 │   └── dashboard_html.h     # Embedded web dashboard HTML
 ├── src/                     # Python host apps + firmware source
-│   ├── app.py               # FastAPI server (Edge Intelligence Platform v2.0.0)
-│   ├── raw_view.py          # Feature-rich Python viewer (with --ip CLI arg)
-│   ├── vision_llm.py        # Live feed → Ollama vision LLM (with --ip CLI arg)
+│   ├── app.py               # FastAPI server (Edge Intelligence Platform)
+│   ├── raw_view.py          # Feature-rich Python viewer
+│   ├── vision_llm.py        # Live feed → Ollama vision LLM
 │   ├── stream_test.py       # Connectivity test script
-│   ├── index.html           # Web dashboard with tabbed UI and charts
+│   ├── index.html           # Web dashboard frontend
 │   ├── config.py            # Your local IP (gitignored)
 │   ├── config.example.py    # Template — copy to config.py & set IP
 │   ├── config.h             # WiFi credentials (gitignored)
 │   ├── config.example.h     # Template — copy to config.h & set WiFi
-│   └── main.cpp             # ESP32 firmware entry point (v2.0.0 with diagnostics)
+│   └── main.cpp             # ESP32 firmware entry point (with diagnostics)
 └── esp32-s3/                # Older project version (reference)
     ├── app.py               # FastAPI server (v1.0.0)
     ├── raw_view.py          # Legacy viewer

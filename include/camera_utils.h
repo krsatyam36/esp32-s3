@@ -21,7 +21,6 @@
 #define PCLK_GPIO_NUM     13
 
 static framesize_t current_resolution = FRAMESIZE_UXGA;
-static int camera_init_attempts = 0;
 
 bool initCamera() {
     camera_config_t config;
@@ -58,25 +57,11 @@ bool initCamera() {
     current_resolution = config.frame_size;
 
     esp_err_t err = esp_camera_init(&config);
-    camera_init_attempts++;
-
     if (err != ESP_OK) {
-        Serial.printf("Camera init failed (attempt %d) with error 0x%x\n", camera_init_attempts, err);
-        if (camera_init_attempts < 3) {
-            Serial.println("Retrying with VGA fallback...");
-            config.frame_size = FRAMESIZE_VGA;
-            config.jpeg_quality = 15;
-            config.fb_count = 1;
-            err = esp_camera_init(&config);
-            if (err == ESP_OK) {
-                current_resolution = FRAMESIZE_VGA;
-                Serial.println("Camera initialized with VGA fallback");
-                return true;
-            }
-        }
+        Serial.printf("Camera init failed with error 0x%x\n", err);
         return false;
     }
-    Serial.println("Camera initialized successfully");
+    Serial.println("Camera initialized");
     return true;
 }
 
@@ -94,10 +79,6 @@ bool setResolution(framesize_t size) {
 
 const char* resolutionToString(framesize_t fs) {
     switch (fs) {
-        case FRAMESIZE_QQVGA: return "QQVGA";
-        case FRAMESIZE_QVGA:  return "QVGA";
-        case FRAMESIZE_VGA:   return "VGA";
-        case FRAMESIZE_CIF:   return "CIF";
         case FRAMESIZE_SVGA:  return "SVGA";
         case FRAMESIZE_UXGA:  return "UXGA";
         default:              return "OTHER";

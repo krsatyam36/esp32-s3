@@ -7,25 +7,11 @@ import numpy as np
 import time
 import json
 import os
-import sys
-import argparse
 import threading
 from datetime import datetime
+from config import ESP32_IP
 
-parser = argparse.ArgumentParser(description="ESP32-S3 Camera Viewer")
-parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
-args, _ = parser.parse_known_args()
-
-if args.ip:
-    BASE_URL = args.ip.rstrip("/")
-else:
-    try:
-        from config import ESP32_IP
-        BASE_URL = ESP32_IP.rstrip("/")
-    except ImportError:
-        print("ERROR: No config.py found and no --ip provided.")
-        print("Copy config.example.py to config.py and set your ESP32 IP, or use --ip")
-        sys.exit(1)
+BASE_URL = ESP32_IP.rstrip("/")
 SNAPSHOT_DIR = "snapshots"
 RECORDING_DIR = "recordings"
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
@@ -110,9 +96,6 @@ class FrameAnalyzer:
         self.qr_detector = cv2.QRCodeDetector()
         self.prev_gray = None
         self.motion_threshold = 5000
-        self.trail_points: list[tuple[int, int]] = []
-        self.max_trail = 30
-        self.trail_enabled = True
 
     def detect_faces(self, frame: np.ndarray) -> list:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -153,27 +136,10 @@ class FrameAnalyzer:
 
     def draw_motion_contours(self, frame: np.ndarray, thresh: np.ndarray):
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        centers = []
         for c in contours:
             if cv2.contourArea(c) > self.motion_threshold:
                 x, y, w, h = cv2.boundingRect(c)
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-                centers.append((x + w // 2, y + h // 2))
-
-        if self.trail_enabled and centers:
-            cx = int(sum(p[0] for p in centers) / len(centers))
-            cy = int(sum(p[1] for p in centers) / len(centers))
-            self.trail_points.append((cx, cy))
-            if len(self.trail_points) > self.max_trail:
-                self.trail_points.pop(0)
-
-        if self.trail_enabled and len(self.trail_points) > 1:
-            for i in range(1, len(self.trail_points)):
-                alpha = i / len(self.trail_points)
-                thickness = max(1, int(alpha * 3))
-                color = (0, int(255 * alpha), int(255 * (1 - alpha)))
-                cv2.line(frame, self.trail_points[i - 1], self.trail_points[i], color, thickness, cv2.LINE_AA)
-            cv2.circle(frame, self.trail_points[-1], 4, (0, 255, 255), -1)
 
 # ============================================================
 #  RECORDER
@@ -389,9 +355,7 @@ class Viewer:
         self.rotation_angle = 0
         self.show_grid = False
         self.show_crosshair = False
-        self.show_timestamp = False
         self.recording_start_time = 0
-        self.frame_dims = (0, 0)
 
         # Threading synchronization variables
         self.latest_frame = None
@@ -415,10 +379,6 @@ class Viewer:
             badges.append("GRID")
         if self.show_crosshair:
             badges.append("CROSS")
-        if self.show_timestamp:
-            badges.append("TS")
-        if self.analyzer.trail_enabled:
-            badges.append("TRAIL")
         ModernHUD.top_bar(frame, f"FPS: {self.fps.smooth_fps:.1f}", badges)
 
         if self.show_grid:
@@ -429,10 +389,6 @@ class Viewer:
         if self.recorder.recording and self.recording_start_time > 0:
             elapsed = time.time() - self.recording_start_time
             ModernHUD.recording_indicator(frame, elapsed)
-
-        if self.show_timestamp:
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ModernHUD.text_sm(frame, ts, frame.shape[1] - 160, 28, (180, 180, 180), 0.4, 1)
 
     def handle_keys(self, key: int):
         if key == ord("q"):
@@ -454,12 +410,6 @@ class Viewer:
             self.client.set_resolution("SVGA")
         elif key == ord("2"):
             self.client.set_resolution("UXGA")
-        elif key == ord("3"):
-            self.client.set_resolution("VGA")
-        elif key == ord("4"):
-            self.client.set_resolution("QVGA")
-        elif key == ord("5"):
-            self.client.set_resolution("QQVGA")
         elif key == ord("f"):
             self.enable_face = not self.enable_face
         elif key == ord("z"):
@@ -482,34 +432,26 @@ class Viewer:
             self.client.toggle_led("on" if self.led_on else "off")
         elif key == ord("L"):
             self.client.flash_led(5)
-        elif key == ord("p"):
-            self.analyzer.trail_enabled = not self.analyzer.trail_enabled
-            print(f"Motion trail: {'ON' if self.analyzer.trail_enabled else 'OFF'}")
-        elif key == ord("T"):
-            self.show_timestamp = not self.show_timestamp
-            print(f"Timestamp: {'ON' if self.show_timestamp else 'OFF'}")
 
     def _capture_loop(self):
-        """Background thread dedicated entirely to network streaming.
-        Uses exponential backoff with random jitter for reconnection."""
-        import random
+        """Background thread dedicated entirely to network streaming."""
         print(f"Connecting to {BASE_URL}...")
-        retry_delay = 1.0
-        max_retry = 30.0
         while self.running:
             stream = None
             try:
                 stream = self.client.get_stream()
                 print("Connected! Streaming started...\n")
-                retry_delay = 1.0
                 while self.running:
                     try:
+                        # 64KB chunks to prevent socket bottlenecks on high-res frames
                         data = stream.read(65536)
                         if not data:
                             break
 
                         self.buffer.feed(data)
 
+                        # Flush the queue: Keep extracting frames until the buffer is empty.
+                        # We only want to pass the absolute newest one to the UI.
                         while True:
                             frame = self.buffer.get_frame()
                             if frame is None:
@@ -525,21 +467,18 @@ class Viewer:
                         print("Connection lost, reconnecting...")
                         break
                     except Exception as e:
-                        print(f"Stream error: {e}. Reconnecting...")
+                        print(f"Stream error: {e}. Attempting to reconnect...")
                         break
             except Exception as e:
-                print(f"Connection failed: {e}")
+                print(f"Connection failed: {e}\nCheck if the board is on and the IP is correct.")
+                print(f"Retrying in 2 seconds...")
             finally:
                 if stream is not None:
                     try:
                         stream.close()
                     except Exception:
                         pass
-            jitter = random.uniform(0.5, 1.5)
-            actual_delay = min(retry_delay * jitter, max_retry)
-            print(f"Retrying in {actual_delay:.1f}s... (backoff: {retry_delay:.0f}s)")
-            time.sleep(actual_delay)
-            retry_delay = min(retry_delay * 2, max_retry)
+            time.sleep(2)
 
     def run(self):
         """Main UI Thread: Handles rendering, AI, and OpenCV events."""
@@ -597,10 +536,6 @@ class Viewer:
 
             self.draw_hud(frame)
 
-            h, w = frame.shape[:2]
-            if (w, h) != self.frame_dims:
-                self.frame_dims = (w, h)
-
             if not stream_recording and self.recorder.recording:
                 self.recorder.start(frame)
                 stream_recording = True
@@ -611,8 +546,7 @@ class Viewer:
                 self.recording_start_time = 0
                 stream_recording = False
 
-            title = f"ESP32-S3 Camera Viewer — {w}x{h}"
-            cv2.imshow(title, frame)
+            cv2.imshow("ESP32-S3 Camera Viewer", frame)
             
             key = cv2.waitKey(1) & 0xFF
             self.handle_keys(key)
@@ -631,23 +565,18 @@ def print_help():
  q    - Quit
  s    - Save snapshot
  r    - Toggle recording
-    1    - Resolution: SVGA (800x600)
-    2    - Resolution: UXGA (1600x1200)
-    3    - Resolution: VGA (640x480)
-    4    - Resolution: QVGA (320x240)
-    5    - Resolution: QQVGA (160x120)
-    f    - Toggle face detection
+ 1    - Resolution: SVGA (800x600)
+ 2    - Resolution: UXGA (1600x1200)
+ f    - Toggle face detection
  z    - Toggle QR code reader
  m    - Toggle motion detection
  t    - Toggle telemetry overlay
  o    - Rotate 90° CW (cycles 0/90/180/270)
  g    - Toggle rule-of-thirds grid
  c    - Toggle center crosshair
-    l    - Toggle LED on/off
-    L    - Flash LED (shift+L)
-    p    - Toggle motion trail overlay
-    T    - Toggle timestamp overlay (shift+T)
-    h    - Show this help
+ l    - Toggle LED on/off
+ L    - Flash LED (shift+L)
+ h    - Show this help
  Dashboard: {BASE_URL}/dashboard
 ========================================
 """)

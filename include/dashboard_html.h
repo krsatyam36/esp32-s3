@@ -147,9 +147,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"rawliteral(
           <div class="metric"><div class="value" id="rssi">--</div><div class="label">WiFi RSSI</div></div>
           <div class="metric"><div class="value" id="resolution">--</div><div class="label">Resolution</div></div>
           <div class="metric"><div class="value" id="psram">--</div><div class="label">Free PSRAM</div></div>
-          <div class="metric"><div class="value" id="total_psram">--</div><div class="label">Total PSRAM</div></div>
           <div class="metric"><div class="value" id="temp">--</div><div class="label">Temp (&deg;C)</div></div>
-          <div class="metric"><div class="value" id="chip_id">--</div><div class="label">Chip ID</div></div>
         </div>
       </div>
       <div class="card section">
@@ -251,9 +249,7 @@ const char DASHBOARD_HTML[] PROGMEM = R"rawliteral(
       document.getElementById('rssi').textContent = data.rssi || '--';
       document.getElementById('resolution').textContent = data.resolution || '--';
       document.getElementById('psram').textContent = data.free_psram || '--';
-      document.getElementById('total_psram').textContent = data.total_psram || '--';
       document.getElementById('temp').textContent = data.temperature || '--';
-      document.getElementById('chip_id').textContent = data.chip_id || '--';
     } catch(e) {}
   }
   document.addEventListener('keydown', (e) => {
