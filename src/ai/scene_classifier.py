@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import threading
 import time
@@ -5,6 +7,11 @@ from collections import deque
 
 import cv2
 import numpy as np
+
+import typing
+
+if typing.TYPE_CHECKING:
+    from src.core.camera_capture import CameraCapture
 
 
 SCENE_CATEGORIES = [
@@ -16,19 +23,19 @@ SCENE_CATEGORIES = [
 
 
 class SceneClassifier:
-    def __init__(self, camera):
+    def __init__(self, camera: CameraCapture) -> None:
         self.camera = camera
-        self._current_scene = "unknown"
-        self._scene_history = deque(maxlen=100)
+        self._current_scene: str = "unknown"
+        self._scene_history: deque[dict[str, object]] = deque(maxlen=100)
         self._lock = threading.Lock()
-        self._last_analysis = 0
-        self._interval = 5.0
+        self._last_analysis: float = 0.0
+        self._interval: float = 5.0
 
-    def start(self):
+    def start(self) -> None:
         t = threading.Thread(target=self._loop, daemon=True)
         t.start()
 
-    def _loop(self):
+    def _loop(self) -> None:
         while True:
             raw = self.camera.latest_frame
             if raw is not None and (time.time() - self._last_analysis) >= self._interval:
@@ -90,6 +97,6 @@ class SceneClassifier:
             return self._current_scene
 
     @property
-    def history(self) -> list:
+    def history(self) -> list[dict[str, object]]:
         with self._lock:
             return list(self._scene_history)
