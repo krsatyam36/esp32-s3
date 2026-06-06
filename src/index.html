@@ -103,7 +103,7 @@
       </div>
       <h1 class="text-lg font-bold tracking-tight text-white/90">
         ESP32-S3 <span class="text-sky-400">Edge Intelligence</span>
-        <span class="text-[10px] font-mono text-slate-600 ml-2">v2.1.0</span>
+        <span class="text-[10px] font-mono text-slate-600 ml-2">v2.0.0</span>
       </h1>
     </div>
     <div class="flex items-center gap-3 text-xs flex-wrap">
@@ -115,6 +115,8 @@
       <span id="modeDisplay" class="font-semibold text-slate-400 text-[11px]">normal</span>
       <span class="w-px h-4 bg-white/10"></span>
       <span id="fpsDisplay" class="font-mono text-slate-400 text-[11px]">0 FPS</span>
+      <span class="w-px h-4 bg-white/10"></span>
+      <span id="connStatus" class="flex items-center gap-1.5"><span class="status-dot na"></span><span class="text-slate-500">Connecting...</span></span>
     </div>
   </header>
 
@@ -481,9 +483,18 @@ async function fetchHealth() {
     const h = await r.json();
     $('healthEsp').className = 'status-dot ' + (h.esp32.connected ? 'on' : 'off');
     $('healthOllama').className = 'status-dot ' + (h.ollama.connected ? 'on' : 'off');
+    const statusEl = $('connStatus');
+    if (h.esp32.connected && h.ollama.connected) {
+      statusEl.innerHTML = '<span class="status-dot on"></span><span class="text-green-400">Connected</span>';
+    } else if (h.esp32.connected) {
+      statusEl.innerHTML = '<span class="status-dot off"></span><span class="text-yellow-400">Partial</span>';
+    } else {
+      statusEl.innerHTML = '<span class="status-dot na"></span><span class="text-red-400">Disconnected</span>';
+    }
   } catch(e) {
     $('healthEsp').className = 'status-dot na';
     $('healthOllama').className = 'status-dot na';
+    $('connStatus').innerHTML = '<span class="status-dot na"></span><span class="text-red-400">Offline</span>';
   }
 }
 setInterval(fetchHealth, 5000); fetchHealth();
