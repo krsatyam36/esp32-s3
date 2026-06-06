@@ -3,8 +3,10 @@
 #include <ArduinoOTA.h>
 #include <Arduino.h>
 
+#define OTA_HOSTNAME "xiao-esp32s3-cam"
+
 void setupOTA() {
-    ArduinoOTA.setHostname("xiao-esp32s3-cam");
+    ArduinoOTA.setHostname(OTA_HOSTNAME);
 
     ArduinoOTA.onStart([]() {
         Serial.println("OTA update started");
