@@ -524,14 +524,9 @@ async def health():
 
 @app.get("/api/stats")
 async def api_stats():
-    processes = []
-    with os.scandir("/proc") if os.path.exists("/proc") else type("", (), {"__iter__": lambda _: iter([])})() as _:
-        pass
     return {
         "uptime_seconds": time.time() - _start_time,
         "python_version": sys.version.split()[0],
-        "memory": {"rss": None, "vms": None},
-        "cpu_percent": None,
         "threads": threading.active_count(),
     }
 
@@ -555,6 +550,50 @@ async def api_restart():
         os._exit(0)
     asyncio.create_task(delayed_restart())
     return {"status": "restarting"}
+
+
+@app.get("/api/camera/resolution")
+async def camera_resolution():
+    """Returns the current camera resolution info."""
+    frame = camera.latest_frame
+    if frame is None:
+        return {"width": None, "height": None, "has_frame": False}
+    arr = cv2.imdecode(np.frombuffer(frame, np.uint8), cv2.IMREAD_COLOR)
+    if arr is None:
+        return {"width": None, "height": None, "has_frame": False}
+    h, w = arr.shape[:2]
+    return {"width": w, "height": h, "has_frame": True, "aspect": f"{w}:{h}"}
+
+
+@app.get("/api/performance")
+async def performance_metrics():
+    return {
+        "fps": round(camera.capture_fps, 1) if hasattr(camera, "capture_fps") else None,
+        "buffer_depth": camera.buffer_depth if hasattr(camera, "buffer_depth") else None,
+        "frame_id": camera.frame_id if hasattr(camera, "frame_id") else None,
+        "camera_uptime": round(camera.uptime, 1) if hasattr(camera, "uptime") else None,
+        "analysis_latency": round(analyzer.last_latency, 2) if hasattr(analyzer, "last_latency") else None,
+    }
+
+
+@app.get("/api/gatekeeper/stats")
+async def gatekeeper_stats():
+    return {"stats": gatekeeper.stats if hasattr(gatekeeper, "stats") else {}, "ready": gatekeeper.ready}
+
+
+@app.get("/api/telemetry/latest")
+async def telemetry_latest():
+    tele = esp32.get_telemetry()
+    return {"telemetry": tele}
+
+
+@app.get("/api/snapshot")
+async def api_snapshot():
+    frame = camera.latest_frame
+    if frame is None:
+        return {"error": "no frame available"}
+    b64 = base64.b64encode(frame).decode()
+    return {"image": b64, "format": "jpeg", "size": len(frame)}
 
 
 # ─── Serve Frontend ──────────────────────────
