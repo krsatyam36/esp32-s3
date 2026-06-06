@@ -1,0 +1,22 @@
+# Labels configuration for actions/labeler
+"firmware":
+  - changed-files:
+      - any: ["include/**", "src/main.cpp", "platformio.ini"]
+"backend":
+  - changed-files:
+      - any: ["src/app.py", "src/*.py"]
+"frontend":
+  - changed-files:
+      - any: ["src/index.html"]
+"documentation":
+  - changed-files:
+      - any: ["README.md", "**/*.md"]
+"ci/cd":
+  - changed-files:
+      - any: [".github/**"]
+"docker":
+  - changed-files:
+      - any: ["Dockerfile", "docker-compose.yml", ".dockerignore"]
+"testing":
+  - changed-files:
+      - any: ["tests/**"]

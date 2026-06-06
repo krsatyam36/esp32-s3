@@ -1,0 +1,22 @@
+name: Firmware Build
+
+on:
+  push:
+    paths:
+      - "include/**"
+      - "src/main.cpp"
+      - "platformio.ini"
+  pull_request:
+    paths:
+      - "include/**"
+      - "src/main.cpp"
+      - "platformio.ini"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kumekay/platformio-actions@v1
+        with:
+          command: run
