@@ -468,6 +468,24 @@ async def dashboard_data():
     }
 
 
+# ─── Version & Info ──────────────────────────
+
+@app.get("/api/version")
+async def api_version():
+    return {
+        "version": "2.0.0",
+        "name": "ESP32-S3 Edge Intelligence Platform",
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "endpoints": [
+            "/health", "/api/version", "/api/stats",
+            "/stream", "/snapshot", "/telemetry",
+            "/scene", "/timeline", "/stats",
+            "/alerts", "/heatmap", "/dashboard-data",
+        ],
+    }
+
+
 # ─── Health & Status ─────────────────────────
 
 @app.get("/health")
