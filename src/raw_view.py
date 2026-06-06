@@ -389,7 +389,9 @@ class Viewer:
         self.rotation_angle = 0
         self.show_grid = False
         self.show_crosshair = False
+        self.show_timestamp = False
         self.recording_start_time = 0
+        self.frame_dims = (0, 0)
 
         # Threading synchronization variables
         self.latest_frame = None
@@ -413,6 +415,8 @@ class Viewer:
             badges.append("GRID")
         if self.show_crosshair:
             badges.append("CROSS")
+        if self.show_timestamp:
+            badges.append("TS")
         if self.analyzer.trail_enabled:
             badges.append("TRAIL")
         ModernHUD.top_bar(frame, f"FPS: {self.fps.smooth_fps:.1f}", badges)
@@ -425,6 +429,10 @@ class Viewer:
         if self.recorder.recording and self.recording_start_time > 0:
             elapsed = time.time() - self.recording_start_time
             ModernHUD.recording_indicator(frame, elapsed)
+
+        if self.show_timestamp:
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            ModernHUD.text_sm(frame, ts, frame.shape[1] - 160, 28, (180, 180, 180), 0.4, 1)
 
     def handle_keys(self, key: int):
         if key == ord("q"):
@@ -471,6 +479,9 @@ class Viewer:
         elif key == ord("p"):
             self.analyzer.trail_enabled = not self.analyzer.trail_enabled
             print(f"Motion trail: {'ON' if self.analyzer.trail_enabled else 'OFF'}")
+        elif key == ord("T"):
+            self.show_timestamp = not self.show_timestamp
+            print(f"Timestamp: {'ON' if self.show_timestamp else 'OFF'}")
 
     def _capture_loop(self):
         """Background thread dedicated entirely to network streaming."""
@@ -575,6 +586,10 @@ class Viewer:
 
             self.draw_hud(frame)
 
+            h, w = frame.shape[:2]
+            if (w, h) != self.frame_dims:
+                self.frame_dims = (w, h)
+
             if not stream_recording and self.recorder.recording:
                 self.recorder.start(frame)
                 stream_recording = True
@@ -585,7 +600,8 @@ class Viewer:
                 self.recording_start_time = 0
                 stream_recording = False
 
-            cv2.imshow("ESP32-S3 Camera Viewer", frame)
+            title = f"ESP32-S3 Camera Viewer — {w}x{h}"
+            cv2.imshow(title, frame)
             
             key = cv2.waitKey(1) & 0xFF
             self.handle_keys(key)
@@ -616,6 +632,7 @@ def print_help():
     l    - Toggle LED on/off
     L    - Flash LED (shift+L)
     p    - Toggle motion trail overlay
+    T    - Toggle timestamp overlay (shift+T)
     h    - Show this help
  Dashboard: {BASE_URL}/dashboard
 ========================================
