@@ -15,8 +15,6 @@ static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %
 
 httpd_handle_t stream_httpd = NULL;
 
-// ==================== MJPEG STREAM ====================
-
 static esp_err_t stream_handler(httpd_req_t *req) {
     camera_fb_t *fb = NULL;
     esp_err_t res = ESP_OK;
@@ -69,8 +67,6 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     return res;
 }
 
-// ==================== SNAPSHOT ====================
-
 static esp_err_t snapshot_handler(httpd_req_t *req) {
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb) {
@@ -83,8 +79,6 @@ static esp_err_t snapshot_handler(httpd_req_t *req) {
     esp_camera_fb_return(fb);
     return res;
 }
-
-// ==================== RESOLUTION ====================
 
 static esp_err_t resolution_handler(httpd_req_t *req) {
     char buf[16];
@@ -100,7 +94,11 @@ static esp_err_t resolution_handler(httpd_req_t *req) {
     }
 
     framesize_t fs;
-    if (strcmp(val, "SVGA") == 0) fs = FRAMESIZE_SVGA;
+    if (strcmp(val, "QQVGA") == 0) fs = FRAMESIZE_QQVGA;
+    else if (strcmp(val, "QVGA") == 0) fs = FRAMESIZE_QVGA;
+    else if (strcmp(val, "VGA") == 0) fs = FRAMESIZE_VGA;
+    else if (strcmp(val, "CIF") == 0) fs = FRAMESIZE_CIF;
+    else if (strcmp(val, "SVGA") == 0) fs = FRAMESIZE_SVGA;
     else if (strcmp(val, "UXGA") == 0) fs = FRAMESIZE_UXGA;
     else {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid resolution");
@@ -114,8 +112,6 @@ static esp_err_t resolution_handler(httpd_req_t *req) {
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
 }
-
-// ==================== LED CONTROL ====================
 
 static esp_err_t led_handler(httpd_req_t *req) {
     char buf[16];
@@ -140,8 +136,6 @@ static esp_err_t led_handler(httpd_req_t *req) {
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
 }
-
-// ==================== FLASH LED ====================
 
 static esp_err_t flash_handler(httpd_req_t *req) {
     char buf[16];
@@ -170,8 +164,6 @@ static esp_err_t flash_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-// ==================== TELEMETRY ====================
-
 static esp_err_t telemetry_handler(httpd_req_t *req) {
     char json[512];
     unsigned long uptime_sec = millis() / 1000;
@@ -179,6 +171,7 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
     uint32_t heap = ESP.getFreeHeap();
     uint32_t psram = ESP.getFreePsram();
     float temp = temperatureRead();
+    uint32_t total_psram = ESP.getPsramSize();
 
     snprintf(json, sizeof(json),
         "{"
@@ -187,24 +180,42 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
         "\"rssi\":%d,"
         "\"resolution\":\"%s\","
         "\"free_psram\":%lu,"
-        "\"temperature\":%.1f"
+        "\"total_psram\":%lu,"
+        "\"temperature\":%.1f,"
+        "\"ip\":\"%s\","
+        "\"chip_id\":\"%s\","
+        "\"cpu_freq\":%d,"
+        "\"camera_init_attempts\":%d,"
+        "\"framesize\":%d"
         "}",
-        heap, uptime_sec, rssi, resolutionToString(current_resolution), psram, temp);
+        heap, uptime_sec, rssi, resolutionToString(current_resolution),
+        psram, total_psram, temp,
+        WiFi.localIP().toString().c_str(),
+        String((uint32_t)ESP.getEfuseMac(), HEX).c_str(),
+        ESP.getCpuFreqMHz(),
+        camera_init_attempts,
+        (int)current_resolution);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
 }
 
-// ==================== DASHBOARD ====================
+static esp_err_t ping_handler(httpd_req_t *req) {
+    char json[128];
+    snprintf(json, sizeof(json),
+        "{\"status\":\"ok\",\"uptime\":%lu,\"ip\":\"%s\"}",
+        millis() / 1000, WiFi.localIP().toString().c_str());
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
 
 static esp_err_t dashboard_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, DASHBOARD_HTML, strlen(DASHBOARD_HTML));
     return ESP_OK;
 }
-
-// ==================== START SERVER ====================
 
 void startWebServer() {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -247,6 +258,12 @@ void startWebServer() {
         .handler = telemetry_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t ping_uri = {
+        .uri = "/ping",
+        .method = HTTP_GET,
+        .handler = ping_handler,
+        .user_ctx = NULL
+    };
     httpd_uri_t dashboard_uri = {
         .uri = "/dashboard",
         .method = HTTP_GET,
@@ -262,6 +279,7 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &led_uri);
         httpd_register_uri_handler(stream_httpd, &flash_uri);
         httpd_register_uri_handler(stream_httpd, &telemetry_uri);
+        httpd_register_uri_handler(stream_httpd, &ping_uri);
         httpd_register_uri_handler(stream_httpd, &dashboard_uri);
         Serial.println("Server started with all endpoints");
     } else {
