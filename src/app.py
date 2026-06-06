@@ -35,7 +35,9 @@ import numpy as np
 import requests
 from fastapi import FastAPI, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
+from fastapi import HTTPException
 from pydantic import BaseModel
 
 try:
@@ -120,9 +122,11 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 @app.on_event("startup")
