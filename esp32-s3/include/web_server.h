@@ -207,6 +207,16 @@ static esp_err_t flash_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+// ==================== RESET ====================
+
+static esp_err_t reset_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{\"status\":\"restarting\"}");
+    delay(100);
+    ESP.restart();
+    return ESP_OK;
+}
+
 // ==================== TELEMETRY ====================
 
 static esp_err_t telemetry_handler(httpd_req_t *req) {
@@ -365,6 +375,12 @@ void startWebServer() {
         .handler = dashboard_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t reset_uri = {
+        .uri = "/reset",
+        .method = HTTP_GET,
+        .handler = reset_handler,
+        .user_ctx = NULL
+    };
 
     Serial.printf("Starting web server on port: %d\n", config.server_port);
     if (httpd_start(&stream_httpd, &config) == ESP_OK) {
@@ -374,6 +390,7 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &flip_uri);
         httpd_register_uri_handler(stream_httpd, &led_uri);
         httpd_register_uri_handler(stream_httpd, &flash_uri);
+        httpd_register_uri_handler(stream_httpd, &reset_uri);
         httpd_register_uri_handler(stream_httpd, &telemetry_uri);
         httpd_register_uri_handler(stream_httpd, &ping_uri);
         httpd_register_uri_handler(stream_httpd, &diag_uri);
