@@ -24,6 +24,9 @@
     .glass { background: rgba(12,20,38,0.72); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid rgba(255,255,255,0.06); }
     .glass-card { background: rgba(12,20,38,0.78); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); border: 1px solid rgba(255,255,255,0.07); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
     .glass-card:hover { border-color: rgba(255,255,255,0.12); }
+    .toast { position: fixed; bottom: 20px; right: 20px; z-index: 9999; transition: all 0.3s ease; }
+    .toast-enter { opacity: 0; transform: translateY(20px); }
+    .toast-visible { opacity: 1; transform: translateY(0); }
     .stream-wrapper { position: relative; background: #000; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; border: 1px solid rgba(255,255,255,0.06); }
     .stream-wrapper img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .stream-wrapper img.rot-90 { transform: rotate(90deg); }
@@ -122,7 +125,8 @@
 
   <!-- ═══ Navigation Tabs ═══ -->
   <div class="flex gap-1 mb-4 overflow-x-auto">
-    <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">&#x1F4FA; Dashboard</div>
+    <div id="toastContainer" class="toast toast-enter"></div>
+  <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">&#x1F4FA; Dashboard</div>
     <div class="nav-tab" data-tab="analytics" onclick="switchTab('analytics')">&#x1F4CA; Analytics</div>
     <div class="nav-tab" data-tab="events" onclick="switchTab('events')">&#x1F4CB; Events</div>
     <div class="nav-tab" data-tab="alerts" onclick="switchTab('alerts')">&#x1F514; Alerts</div>
@@ -498,6 +502,14 @@ async function fetchHealth() {
   }
 }
 setInterval(fetchHealth, 5000); fetchHealth();
+
+function showToast(msg, type='info') {
+  const el = $('toastContainer');
+  const colors = {info: 'border-sky-500', success: 'border-green-500', error: 'border-red-500'};
+  el.innerHTML = `<div class="glass rounded-xl px-4 py-2.5 text-xs border-l-2 ${colors[type]||colors.info} shadow-lg">${msg}</div>`;
+  el.className = 'toast toast-visible';
+  setTimeout(() => { el.className = 'toast toast-enter'; }, 3000);
+}
 
 // ── Scene ──
 async function fetchScene() {
