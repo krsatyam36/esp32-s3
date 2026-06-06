@@ -454,6 +454,12 @@ class Viewer:
             self.client.set_resolution("SVGA")
         elif key == ord("2"):
             self.client.set_resolution("UXGA")
+        elif key == ord("3"):
+            self.client.set_resolution("VGA")
+        elif key == ord("4"):
+            self.client.set_resolution("QVGA")
+        elif key == ord("5"):
+            self.client.set_resolution("QQVGA")
         elif key == ord("f"):
             self.enable_face = not self.enable_face
         elif key == ord("z"):
@@ -484,24 +490,26 @@ class Viewer:
             print(f"Timestamp: {'ON' if self.show_timestamp else 'OFF'}")
 
     def _capture_loop(self):
-        """Background thread dedicated entirely to network streaming."""
+        """Background thread dedicated entirely to network streaming.
+        Uses exponential backoff with random jitter for reconnection."""
+        import random
         print(f"Connecting to {BASE_URL}...")
+        retry_delay = 1.0
+        max_retry = 30.0
         while self.running:
             stream = None
             try:
                 stream = self.client.get_stream()
                 print("Connected! Streaming started...\n")
+                retry_delay = 1.0
                 while self.running:
                     try:
-                        # 64KB chunks to prevent socket bottlenecks on high-res frames
                         data = stream.read(65536)
                         if not data:
                             break
 
                         self.buffer.feed(data)
 
-                        # Flush the queue: Keep extracting frames until the buffer is empty.
-                        # We only want to pass the absolute newest one to the UI.
                         while True:
                             frame = self.buffer.get_frame()
                             if frame is None:
@@ -517,18 +525,21 @@ class Viewer:
                         print("Connection lost, reconnecting...")
                         break
                     except Exception as e:
-                        print(f"Stream error: {e}. Attempting to reconnect...")
+                        print(f"Stream error: {e}. Reconnecting...")
                         break
             except Exception as e:
-                print(f"Connection failed: {e}\nCheck if the board is on and the IP is correct.")
-                print(f"Retrying in 2 seconds...")
+                print(f"Connection failed: {e}")
             finally:
                 if stream is not None:
                     try:
                         stream.close()
                     except Exception:
                         pass
-            time.sleep(2)
+            jitter = random.uniform(0.5, 1.5)
+            actual_delay = min(retry_delay * jitter, max_retry)
+            print(f"Retrying in {actual_delay:.1f}s... (backoff: {retry_delay:.0f}s)")
+            time.sleep(actual_delay)
+            retry_delay = min(retry_delay * 2, max_retry)
 
     def run(self):
         """Main UI Thread: Handles rendering, AI, and OpenCV events."""
@@ -620,9 +631,12 @@ def print_help():
  q    - Quit
  s    - Save snapshot
  r    - Toggle recording
- 1    - Resolution: SVGA (800x600)
- 2    - Resolution: UXGA (1600x1200)
- f    - Toggle face detection
+    1    - Resolution: SVGA (800x600)
+    2    - Resolution: UXGA (1600x1200)
+    3    - Resolution: VGA (640x480)
+    4    - Resolution: QVGA (320x240)
+    5    - Resolution: QQVGA (160x120)
+    f    - Toggle face detection
  z    - Toggle QR code reader
  m    - Toggle motion detection
  t    - Toggle telemetry overlay
