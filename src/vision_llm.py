@@ -15,12 +15,26 @@ import numpy as np
 import time
 import json
 import base64
+import sys
+import argparse
 import threading
 import requests
 from io import BytesIO
-from config import ESP32_IP
 
-BASE_URL = ESP32_IP.rstrip("/")
+parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM")
+parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
+args, _ = parser.parse_known_args()
+
+if args.ip:
+    BASE_URL = args.ip.rstrip("/")
+else:
+    try:
+        from config import ESP32_IP
+        BASE_URL = ESP32_IP.rstrip("/")
+    except ImportError:
+        print("ERROR: No config.py found and no --ip provided.")
+        print("Copy config.example.py to config.py and set your ESP32 IP, or use --ip")
+        sys.exit(1)
 OLLAMA_URL = "http://localhost:11434"
 
 # Vision-capable models available locally
@@ -147,26 +161,42 @@ def get_available_vision_models() -> list[str]:
 def main():
     available_models = get_available_vision_models()
 
-    print("\n=== ESP32-S3 Vision LLM ===\n")
-    print("Available vision models:")
-    for i, m in enumerate(available_models, 1):
-        print(f"  {i}. {m}")
+    _parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM")
+    _parser.add_argument("--model", type=str, default=None, help="Ollama vision model")
+    _parser.add_argument("--interval", type=float, default=None, help="Analysis interval in seconds")
+    _parser.add_argument("--non-interactive", action="store_true", help="Skip prompts, use defaults")
+    _args, _ = _parser.parse_known_args()
 
-    choice = input(f"\nSelect model [1-{len(available_models)}] (default 1): ").strip()
-    try:
-        idx = int(choice) - 1
-        model = available_models[max(0, min(idx, len(available_models) - 1))]
-    except (ValueError, IndexError):
+    if _args.model and _args.model in available_models:
+        model = _args.model
+    elif _args.non_interactive:
         model = available_models[0]
+    else:
+        print("\n=== ESP32-S3 Vision LLM ===\n")
+        print("Available vision models:")
+        for i, m in enumerate(available_models, 1):
+            print(f"  {i}. {m}")
+        choice = input(f"\nSelect model [1-{len(available_models)}] (default 1): ").strip()
+        try:
+            idx = int(choice) - 1
+            model = available_models[max(0, min(idx, len(available_models) - 1))]
+        except (ValueError, IndexError):
+            model = available_models[0]
 
-    interval = input("Analysis interval in seconds [default 5]: ").strip()
-    try:
-        analysis_interval = max(1, float(interval))
-    except ValueError:
+    if _args.interval:
+        analysis_interval = max(1, _args.interval)
+    elif _args.non_interactive:
         analysis_interval = 5
+    else:
+        interval_in = input("Analysis interval in seconds [default 5]: ").strip()
+        try:
+            analysis_interval = max(1, float(interval_in))
+        except ValueError:
+            analysis_interval = 5
 
     print(f"\nModel: {model}")
     print(f"Interval: {analysis_interval}s")
+    print(f"Stream URL: {BASE_URL}/")
     print("Connecting to stream...\n")
 
     ollama = OllamaVisionClient(model)
