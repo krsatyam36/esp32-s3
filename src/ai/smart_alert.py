@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import logging
 import threading
@@ -18,11 +20,11 @@ class AlertRule(BaseModel):
 
 
 class SmartAlert:
-    def __init__(self, rule: AlertRule):
+    def __init__(self, rule: AlertRule) -> None:
         self.rule = rule
-        self.last_triggered = 0.0
+        self.last_triggered: float = 0.0
 
-    def check(self, objects: list[dict]) -> bool:
+    def check(self, objects: list[dict[str, object]]) -> bool:
         if not self.rule.enabled:
             return False
         now = time.time()
@@ -40,9 +42,9 @@ class SmartAlert:
 
 
 class AlertManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self._alerts: list[SmartAlert] = []
-        self._history: deque = deque(maxlen=200)
+        self._history: deque[dict[str, object]] = deque(maxlen=200)
         self._lock = threading.Lock()
         self._default_rules = [
             AlertRule(name="person_detected", class_name="person", min_confidence=0.6, cooldown=10.0),
@@ -79,7 +81,7 @@ class AlertManager:
             self._alerts[idx] = SmartAlert(rule)
         return True
 
-    def add_rule(self, rule: AlertRule):
+    def add_rule(self, rule: AlertRule) -> None:
         with self._lock:
             self._alerts.append(SmartAlert(rule))
 
@@ -96,7 +98,7 @@ class AlertManager:
             return entries[-limit:]
 
     @property
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, object]:
         with self._lock:
             return {
                 "total_alerts": len(self._alerts),
