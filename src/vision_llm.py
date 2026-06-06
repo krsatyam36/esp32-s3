@@ -15,12 +15,26 @@ import numpy as np
 import time
 import json
 import base64
+import sys
+import argparse
 import threading
 import requests
 from io import BytesIO
-from config import ESP32_IP
 
-BASE_URL = ESP32_IP.rstrip("/")
+parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM")
+parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
+args, _ = parser.parse_known_args()
+
+if args.ip:
+    BASE_URL = args.ip.rstrip("/")
+else:
+    try:
+        from config import ESP32_IP
+        BASE_URL = ESP32_IP.rstrip("/")
+    except ImportError:
+        print("ERROR: No config.py found and no --ip provided.")
+        print("Copy config.example.py to config.py and set your ESP32 IP, or use --ip")
+        sys.exit(1)
 OLLAMA_URL = "http://localhost:11434"
 
 # Vision-capable models available locally
