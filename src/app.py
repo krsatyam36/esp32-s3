@@ -43,6 +43,15 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
+_dotenv = os.path.join(os.path.dirname(__file__), "..", ".env")
+if os.path.isfile(_dotenv):
+    with open(_dotenv) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 try:
     from config import ESP32_IP as _IP
     _BASE = _IP.rstrip("/")
