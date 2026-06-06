@@ -1250,6 +1250,13 @@ async def flash_led(count: int = Query(5, ge=1, le=20)):
 async def set_resolution(body: ResValue):
     return esp32.send_command(f"/res?val={body.value}")
 
+class FlipMode(BaseModel): mode: str
+
+@app.post("/flip")
+async def set_flip(body: FlipMode):
+    """Flip camera: mode 'v' for vertical, 'h' for horizontal."""
+    return esp32.send_command(f"/flip?mode={body.mode}")
+
 @app.get("/telemetry")
 async def get_telemetry():
     return esp32.get_telemetry()

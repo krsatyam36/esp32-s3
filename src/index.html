@@ -161,6 +161,10 @@
             </select>
             <span class="w-px h-7 bg-white/5 mx-1"></span>
             <button class="cta bg-sky-600/80 text-white hover:bg-sky-500" onclick="takeSnapshot()">&#128247; Snapshot</button>
+            <span class="w-px h-7 bg-white/5 mx-1"></span>
+            <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Flip</span>
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 cta-sm" onclick="flipCamera('v')">&#x2195; V</button>
+            <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 cta-sm" onclick="flipCamera('h')">&#x2194; H</button>
           </div>
           <div class="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-white/5">
             <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Rotate</span>
@@ -435,6 +439,13 @@ async function changeResolution() {
     const r = await fetch('/res', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: v }) });
     const d = await r.json();
     showToast(d.success ? 'Resolution: ' + v : 'Resolution failed', d.success ? 'success' : 'error');
+  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+async function flipCamera(mode) {
+  try {
+    const r = await fetch('/flip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: mode }) });
+    const d = await r.json();
+    showToast(d.success ? 'Flip: ' + (mode === 'v' ? 'vertical' : 'horizontal') : 'Flip failed', d.success ? 'success' : 'error');
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 function takeSnapshot() {
