@@ -608,6 +608,24 @@ async def api_snapshot():
     return {"image": b64, "format": "jpeg", "size": len(frame)}
 
 
+@app.get("/api/events/recent")
+async def recent_events(limit: int = 20):
+    events = gatekeeper.get_events(limit=limit) if hasattr(gatekeeper, "get_events") else []
+    return {"events": events, "total": len(events)}
+
+
+@app.get("/api/alerts/rules")
+async def alert_rules():
+    rules = getattr(alert_manager, "rules", [])
+    return {"rules": rules, "count": len(rules)}
+
+
+@app.get("/api/scene/current")
+async def scene_current():
+    current = getattr(scene_classifier, "current", "unknown")
+    return {"scene": current, "updated_at": time.time()}
+
+
 # ─── Serve Frontend ──────────────────────────
 
 @app.get("/")
