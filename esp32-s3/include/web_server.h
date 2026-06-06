@@ -183,19 +183,26 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
     uint32_t heap = ESP.getFreeHeap();
     uint32_t psram = ESP.getFreePsram();
     float temp = temperatureRead();
+    uint32_t total_psram = ESP.getPsramSize();
 
     snprintf(json, sizeof(json),
         "{"
         "\"heap\":%lu,"
         "\"uptime\":%lu,"
         "\"rssi\":%d,"
-        "\"ip\":\"%s\","
         "\"resolution\":\"%s\","
         "\"free_psram\":%lu,"
-        "\"temperature\":%.1f"
+        "\"total_psram\":%lu,"
+        "\"temperature\":%.1f,"
+        "\"ip\":\"%s\","
+        "\"chip_id\":\"%s\","
+        "\"cpu_freq\":%d"
         "}",
-        heap, uptime_sec, rssi, WiFi.localIP().toString().c_str(),
-        resolutionToString(current_resolution), psram, temp);
+        heap, uptime_sec, rssi, resolutionToString(current_resolution),
+        psram, total_psram, temp,
+        WiFi.localIP().toString().c_str(),
+        String((uint32_t)ESP.getEfuseMac(), HEX).c_str(),
+        ESP.getCpuFreqMHz());
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
