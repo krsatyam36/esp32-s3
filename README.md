@@ -90,7 +90,11 @@ It includes:
 - 🖼️ **Frame dimensions** — displayed in viewer window title
 - 🧪 **Stream test script** — `stream_test.py` for quick connectivity check
 - 🎛️ **CLI arguments** — override IP, port, and model via `--ip` command line argument
-- 🧰 **Makefile** — `make viewer`, `make server`, `make vision`, `make test` for quick commands
+- 🧰 **Makefile** — `make viewer`, `make server`, `make vision`, `make test`, `make check` for quick commands
+- ✅ **Setup validation** — `python src/check_deps.py` verifies all dependencies and configuration
+- 🔄 **Camera flip/mirror** — toggle vertical flip and horizontal mirror from the dashboard
+- 🏥 **Diagnostics endpoint** — `/diag` returns full chip info, firmware version, and system health
+- 📊 **Aggregated dashboard** — `/dashboard-data` returns all telemetry in a single call
 - 📊 **Analytics dashboard** — real-time FPS and latency charts via Chart.js
 - 🔄 **Tabbed UI** — organized panels for Dashboard, Analytics, Events, Alerts, and Heatmap
 - ⚙️ **Alert rules management** — enable/disable alert rules directly from the web UI
@@ -383,6 +387,9 @@ Open **http://localhost:8000** in your browser.
 | `/metrics` | GET | Performance metrics time series |
 | `/heatmap` | GET | Motion heatmap as base64 JPEG |
 | `/heatmap/reset` | POST | Reset accumulated motion heatmap |
+| `/flip` | POST | Toggle camera vflip or hmirror |
+| `/diag` | GET | Full ESP32 diagnostics (chip, flash, PSRAM, SDK) |
+| `/dashboard-data` | GET | Aggregated telemetry for frontend |
 
 ## Boss Mode
 
@@ -500,6 +507,8 @@ The ESP32 exposes these REST endpoints:
 | `/flash?count=N` | GET | Flash LED N times (1-20) |
 | `/telemetry` | GET | JSON: heap, uptime, RSSI, IP, resolution, PSRAM, total_PSRAM, temperature, chip_id, cpu_freq, camera_init_attempts, framesize |
 | `/ping` | GET | Health check: status, uptime, IP |
+| `/diag` | GET | Full chip diagnostics: model, cores, flash, PSRAM, SDK, firmware version |
+| `/flip?mode=v|h` | GET | Toggle vertical flip (v) or horizontal mirror (h) |
 | `/dashboard` | GET | Full web dashboard (embedded) |
 
 ## Troubleshooting
