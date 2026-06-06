@@ -8,7 +8,9 @@
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 #define FIRMWARE_VERSION "1.3.0"
+#ifndef LED_BUILTIN
 #define LED_BUILTIN 21
+#endif
 
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";

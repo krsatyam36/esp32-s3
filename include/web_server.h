@@ -8,7 +8,9 @@
 
 #define PART_BOUNDARY "123456789000000000000987654321"
 #define FIRMWARE_VERSION "2.0.0"
+#ifndef LED_BUILTIN
 #define LED_BUILTIN 21
+#endif
 #define FW_NAME "xiao-esp32s3-cam"
 
 static unsigned long _start_ms = 0;

@@ -27,254 +27,310 @@
 - [Features](#features)
 - [System Prerequisites](#system-prerequisites)
 - [Installation & Setup](#installation--setup)
-  - [1. Virtual Environment Setup](#1-virtual-environment-setup)
-  - [2. Install Python Dependencies](#2-install-python-dependencies)
-  - [3. Hardware Configuration (platformio.ini)](#3-hardware-configuration-platformioini)
-  - [4. Configure WiFi and Upload Firmware](#4-configure-wifi-and-upload-firmware)
+  - [Step 0: Clone the Repository](#step-0-clone-the-repository)
+  - [Step 1: Virtual Environment Setup](#step-1-virtual-environment-setup)
+  - [Step 2: Install Python Dependencies](#step-2-install-python-dependencies)
+  - [Step 3: Configure WiFi Credentials](#step-3-configure-wifi-credentials)
+  - [Step 4: Upload Firmware to ESP32](#step-4-upload-firmware-to-esp32)
 - [Running the Stream](#running-the-stream)
-  - [5. Get the IP Address](#5-get-the-ip-address)
-  - [6. Run the Python Viewer](#6-run-the-python-viewer)
-  - [7. Use the Web Dashboard](#7-optional-use-the-web-dashboard)
-  - [8. OTA Firmware Updates](#8-optional-ota-firmware-updates)
-  - [9. Vision LLM](#9-vision-llm)
-  - [10. FastAPI Server (app.py)](#10-fastapi-server-apppy)
+  - [Step 5: Get the IP Address](#step-5-get-the-ip-address)
+  - [Step 6: Run the Python Viewer](#step-6-run-the-python-viewer)
+  - [Step 7: Use the Web Dashboard](#step-7-use-the-web-dashboard)
+  - [Step 8: OTA Firmware Updates](#step-8-ota-firmware-updates)
+  - [Step 9: Vision LLM](#step-9-vision-llm)
+  - [Step 10: FastAPI Server](#step-10-fastapi-server-apppy)
 - [Boss Mode](#boss-mode)
 - [How It Works](#how-it-works)
 - [Troubleshooting](#troubleshooting)
-- [Project Structure](#project-structure)
+- [Project Structure with File Locations](#project-structure-with-file-locations)
 
 ---
 
 ## Overview
 
-This repository provides everything you need to turn a blank **Ubuntu** system into a full edge intelligence platform for the **Seeed XIAO ESP32S3 Sense** camera.  
+This repository turns a blank **Ubuntu** system into a full edge intelligence platform for the **Seeed XIAO ESP32S3 Sense** camera.
+
 It includes:
 
 - **Arduino firmware** (uploaded via PlatformIO) that captures frames and serves an MJPEG stream over WiFi.
-- **FastAPI server** (`app.py`) — web dashboard with Vision LLM, YOLO gatekeeper, semantic search, and adaptive rate control.
-- **Standalone Python viewer** (`raw_view.py`) — feature-rich OpenCV viewer with face/QR/motion detection, recording, and HUD.
-- **Vision LLM CLI** (`vision_llm.py`) — stream frames to local Ollama vision models for real-time AI description.
+- **FastAPI server** (`src/app.py`) — web dashboard with Vision LLM, YOLO gatekeeper, semantic search, and adaptive rate control.
+- **Standalone Python viewer** (`src/raw_view.py`) — feature-rich OpenCV viewer with face/QR/motion detection, recording, and HUD.
+- **Vision LLM CLI** (`src/vision_llm.py`) — stream frames to local Ollama vision models for real-time AI description.
 
 ## Features
 
-- 🚀 **Low-latency MJPEG streaming** over WiFi
-- 📷 **Snapshot capture** — press `s` or use the dashboard
-- 🎥 **Video recording** — toggle with `r`, saves to `recordings/`
-- 🔄 **Resolution switching** — `1` (SVGA) / `2` (UXGA) / `3` (VGA) / `4` (QVGA) / `5` (QQVGA)
-- 🧑 **Face detection overlay** — toggle with `f`
-- 📱 **QR code reader** — toggle with `z`, decodes in real time
-- 🏃 **Motion detection** — toggle with `m`, highlights movement
-- 💡 **LED control** — toggle with `l`, flash with `L`
-- 📊 **Telemetry overlay** — toggle with `t` (heap, uptime, RSSI, temp, PSRAM, IP)
-- 🌐 **Web dashboard** — full control UI at `http://localhost:8000`
-- 📡 **OTA updates** — upload firmware over WiFi via ArduinoOTA
-- 🔁 **Auto WiFi reconnect** — handles disconnects gracefully
-- 🤖 **Vision LLM** — stream frames to local Ollama vision models (gemma3, llama3.2-vision, qwen2.5vl) for real-time AI description
-- 🎨 **Modern HUD overlay** — drop shadows, translucent dark panels, and feature badges
-- 🔄 **Stream rotation** — rotate the view 90°/180°/270° with `o`
-- ✚ **Rule-of-thirds grid** — composition aid toggle with `g`
-- 🎯 **Center crosshair** — alignment guide toggle with `c`
-- ⏱ **Recording timer** — live `MM:SS` counter with red indicator
-- 🖥 **Fullscreen mode** — `f` key on the web dashboard
-- 🔍 **Semantic search** — natural-language video search via CLIP + ChromaDB
-- 👁 **YOLO event gatekeeper** — real-time object detection triggering LLM analysis
-- ⚡ **Adaptive rate controller** — auto-adjusts resolution & interval based on RSSI/latency
-- ☠️ **Boss Mode** — detects cell phone distraction & roasts you via LLM + TTS
-- 🏠 **Scene classification** — real-time scene analysis (indoor/outdoor/night/crowded) using CV heuristics, no ML dependency
-- 📋 **Activity timeline** — tracks detection events with duration and creates a searchable timeline
-- 🔢 **Object counting** — cumulative detection statistics with top-N class tracking
-- 🔔 **Smart alert system** — configurable rules with per-class confidence thresholds and cooldown
-- 📈 **Performance metrics history** — ring buffer of FPS/latency/queue depth for real-time charts
-- 🌡️ **Motion heatmap** — accumulates motion regions with exponential decay into a visual heatmap
-- ❤️ **Health endpoint** — `/ping` for connectivity checks
-- 🩺 **Camera diagnostics** — detailed init failure reporting with automatic fallback
-- 🔁 **Exponential backoff reconnect** — resilient stream recovery in viewer
-- 🖼️ **Frame dimensions** — displayed in viewer window title
-- 🧪 **Stream test script** — `stream_test.py` for quick connectivity check
-- 🎛️ **CLI arguments** — override IP, port, and model via `--ip` command line argument
-- 🧰 **Makefile** — `make viewer`, `make server`, `make vision`, `make test`, `make check` for quick commands
-- ✅ **Setup validation** — `python src/check_deps.py` verifies all dependencies and configuration
-- 🔄 **Camera flip/mirror** — toggle vertical flip and horizontal mirror from the dashboard
-- 🏥 **Diagnostics endpoint** — `/diag` returns full chip info, firmware version, and system health
-- 📊 **Aggregated dashboard** — `/dashboard-data` returns all telemetry in a single call
-- 📊 **Analytics dashboard** — real-time FPS and latency charts via Chart.js
-- 🔄 **Tabbed UI** — organized panels for Dashboard, Analytics, Events, Alerts, and Heatmap
-- ⚙️ **Alert rules management** — enable/disable alert rules directly from the web UI
+| Feature | File | Description |
+|---------|------|-------------|
+| Low-latency MJPEG streaming | `include/web_server.h` | Serves MJPEG over WiFi on port 80 |
+| Snapshot capture | `include/web_server.h` | Press `s` or use dashboard to save JPEG |
+| Video recording | `src/raw_view.py` | Toggle with `r`, saves to `recordings/` |
+| Resolution switching | `include/camera_utils.h` | 6 levels: QQVGA to UXGA |
+| Face detection | `src/raw_view.py` | Toggle with `f` |
+| QR code reader | `src/raw_view.py` | Toggle with `z`, decodes in real-time |
+| Motion detection | `src/raw_view.py` | Toggle with `m`, highlights movement |
+| LED control | `include/web_server.h` | Toggle with `l`, flash with `L` |
+| Telemetry overlay | `include/web_server.h` | Heap, uptime, RSSI, temp, PSRAM, IP |
+| Web dashboard | `src/index.html` | Full control UI at `http://localhost:8000` |
+| OTA updates | `include/ota_manager.h` | Upload firmware over WiFi |
+| Auto WiFi reconnect | `include/wifi_manager.h` | Handles disconnects gracefully |
+| Vision LLM | `src/vision_llm.py` | Ollama vision models for AI description |
+| Semantic search | `src/ai/vector_search.py` | Natural-language video search via CLIP + ChromaDB |
+| YOLO event gatekeeper | `src/ai/event_gatekeeper.py` | Real-time object detection triggering LLM |
+| Adaptive rate controller | `src/core/adaptive_controller.py` | Auto-adjusts resolution based on RSSI/latency |
+| Boss Mode | `src/app.py` | Detects phone distraction, roasts you via LLM + TTS |
+| Scene classification | `src/ai/scene_classifier.py` | Real-time indoor/outdoor/night/crowded analysis |
+| Activity timeline | `src/ai/timeline_engine.py` | Tracks detection events with duration |
+| Object counting | `src/ai/object_counter.py` | Cumulative stats with top-N class tracking |
+| Smart alerts | `src/ai/smart_alert.py` | Configurable rules with thresholds and cooldown |
+| Motion heatmap | `src/ai/motion_heatmap.py` | Accumulates motion with exponential decay |
+| Performance metrics | `src/core/metrics_history.py` | Ring buffer of FPS/latency/queue depth |
+| Health checks | `include/web_server.h` | `/ping` endpoint for connectivity |
+| Camera diagnostics | `include/camera_utils.h` | Detailed init failure reporting with fallback |
 
 ## System Prerequisites
 
 - **Ubuntu** (or any Debian‑based Linux with `apt`).
-- **USB‑C data cable** – must support data transfer, not just charging.
+- **USB‑C data cable** — must support data transfer, not just charging.
 - **Local WiFi network** (2.4 GHz).
 - **Seeed XIAO ESP32S3 Sense** board.
 
+---
+
 ## Installation & Setup
 
-### 1. Virtual Environment Setup
-
-Isolate project dependencies in a dedicated Python virtual environment.
+### Step 0: Clone the Repository
 
 ```bash
-# Install the venv tool
+# Clone the repo to your machine
+cd ~
+git clone https://github.com/krsatyam36/esp32-s3.git Projects/xiao
+cd Projects/xiao
+```
+
+> All paths in this guide assume you are inside the `~/Projects/xiao/` directory.
+
+---
+
+### Step 1: Virtual Environment Setup
+
+Create a Python virtual environment to isolate dependencies.
+
+**What this does:** A virtual environment keeps project libraries separate from your system Python, avoiding version conflicts.
+
+```bash
+# 1. Install the venv package (if not already installed)
 sudo apt update
 sudo apt install python3-venv -y
 
-# Create the virtual environment (we'll use ~/vir_esp32SENSEenv)
+# 2. Create a virtual environment at ~/vir_esp32SENSEenv
 python3 -m venv ~/vir_esp32SENSEenv
 
-# Activate it (do this every time you work on the project)
+# 3. Activate it (run this every time you open a new terminal for this project)
 source ~/vir_esp32SENSEenv/bin/activate
 ```
 
-Your terminal prompt should now begin with `(vir_esp32SENSEenv)`.
+**Verify:** Your terminal prompt should now begin with `(vir_esp32SENSEenv)`.
 
-### 2. Install Python Dependencies
+> **Important:** Keep the virtual environment active for all subsequent Python commands.
 
-With the virtual environment active, install PlatformIO and the libraries needed by the viewer/server:
+---
+
+### Step 2: Install Python Dependencies
+
+With the virtual environment active, install PlatformIO and required Python libraries.
 
 ```bash
-# Install from requirements.txt (recommended)
-pip install -r esp32-s3/requirements.txt
+# Make sure you're in the project root: ~/Projects/xiao
+# and the virtual env is active
 
-# Or install individually:
+# Install all dependencies at once (recommended)
 pip install platformio opencv-python numpy fastapi uvicorn requests
-# Optional — for event gatekeeper:
-pip install ultralytics
-# Optional — for semantic search:
-pip install chromadb sentence-transformers torch
-# Required for Boss Mode TTS:
+
+# Optional extras:
+pip install ultralytics          # YOLO event gatekeeper
+pip install chromadb sentence-transformers torch   # Semantic search
+```
+
+**For Boss Mode TTS (text-to-speech):**
+```bash
 sudo apt install espeak -y
 ```
 
-### 3. Hardware Configuration (platformio.ini)
-
-Initialize the PlatformIO project for the XIAO ESP32S3 board:
-
+**Verify installation:**
 ```bash
-pio project init --board seeed_xiao_esp32s3
+python src/check_deps.py
 ```
 
-**CRITICAL:** The XIAO ESP32S3 Sense must have PSRAM enabled for the camera buffer.
-Edit `platformio.ini` so it matches exactly:
+---
 
-```ini
-[env:seeed_xiao_esp32s3]
-platform = espressif32
-board = seeed_xiao_esp32s3
-framework = arduino
-monitor_speed = 115200
-upload_speed = 921600
+### Step 3: Configure WiFi Credentials
 
-; Enable 8MB PSRAM for the camera buffer
-build_flags = 
-    -DBOARD_HAS_PSRAM
-    -DARDUINO_USB_MODE=1
-    -DARDUINO_USB_CDC_ON_BOOT=1
+The firmware needs your WiFi SSID and password to connect. You MUST create `src/config.h` before uploading.
+
+**What happens:** The firmware's `include/wifi_manager.h` reads `ssid` and `password` from `src/config.h`. If `src/config.h` doesn't exist, compilation fails with:
+
+```
+error: 'ssid' was not declared in this scope
 ```
 
-### 4. Configure WiFi and Upload Firmware
+**How to fix it:**
 
-Copy the config template and set your WiFi credentials:
+**Option A — Copy the template:**
 
 ```bash
 cp src/config.example.h src/config.h
 ```
 
-Edit `src/config.h` with your network details:
+Then edit `src/config.h` with your WiFi credentials.
 
-```cpp
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+**Option B — Use the pre-configured file:**
+
+If `src/config.h` already exists (created by the setup), it already has your credentials — no action needed.
+
+If you need to create your own (different WiFi):
+
+```bash
+# Copy the template
+cp src/config.example.h src/config.h
+
+# Edit with your credentials
+nano src/config.h
 ```
 
-> `src/config.h` is in `.gitignore` — your credentials will never be committed.
+The file at `src/config.h` should contain:
 
-Connect the ESP32S3 to your computer using a data‑capable USB‑C cable.
+```cpp
+#pragma once
 
-Compile and upload the firmware:
+const char* ssid = "YourWiFiSSID";
+const char* password = "YourWiFiPassword";
+```
+
+**Security:** `src/config.h` is listed in `.gitignore` — your credentials will never be committed to git.
+
+---
+
+### Step 4: Upload Firmware to ESP32
+
+Connect the XIAO ESP32S3 Sense to your computer using a **data-capable USB-C cable**.
+
+**Upload the firmware:**
 
 ```bash
 pio run -t upload
 ```
 
+**Troubleshooting if upload fails:**
+
+| Problem | Check |
+|---------|-------|
+| `Failed to connect` | Try a different USB port or cable |
+| `Not a PlatformIO project` | Make sure you're in `~/Projects/xiao/` (where `platformio.ini` lives) |
+| `A fatal error occurred` | Hold the BOOT button on the XIAO, then press RESET, then try again |
+
+**If the camera doesn't work after upload:** Double-check that `-DBOARD_HAS_PSRAM` is in `platformio.ini` (lines 11-14). Without PSRAM, the camera buffer fails.
+
+---
+
 ## Running the Stream
 
-### 5. Get the IP Address
+### Step 5: Get the IP Address
 
-Once the upload finishes, open the serial monitor:
+Open the serial monitor to see what IP the ESP32 gets from your router:
 
 ```bash
 pio device monitor
 ```
 
-Wait a few seconds until you see something like:
+Wait 5-10 seconds. You should see output ending with:
 
 ```
 Stream Ready at: http://192.168.1.X/
 ```
 
-Copy that IP address and press `Ctrl+C` to exit the monitor.
+**Copy that IP address** (e.g., `192.168.1.42`), then press **Ctrl+C** to exit the monitor.
 
-### 6. Run the Python Viewer
+**If you see `WiFi connection failed` instead:**
+- Verify SSID and password in `src/config.h`
+- Make sure you're on a 2.4 GHz network (ESP32 doesn't support 5 GHz)
+- Check that your router allows new device connections
 
-We use `raw_view.py` instead of OpenCV’s default `VideoCapture` because the built‑in network handler often crashes with “Timeout” errors when the WiFi latency fluctuates. Our script manually buffers raw JPEG bytes, completely avoiding that problem.
+---
 
-Set the IP address in the local config file (not tracked by git):
+### Step 6: Run the Python Viewer
+
+The viewer (`src/raw_view.py`) manually buffers raw JPEG bytes from the ESP32, which is more reliable than OpenCV's `VideoCapture`.
+
+**Method 1 — Create a config file (one-time setup):**
 
 ```bash
-cp config.example.py config.py
+# Copy the template (creates src/config.py)
+cp src/config.example.py src/config.py
+
+# Edit with your ESP32's IP address
+nano src/config.py
 ```
 
-Edit `config.py` and paste the IP address you copied:
+Set the IP:
 
 ```python
 ESP32_IP = "http://192.168.1.X/"
 ```
 
-Run the viewer:
+Then run:
 
 ```bash
-python raw_view.py
-# Or override the IP via command line:
-python raw_view.py --ip http://192.168.1.X/
+python src/raw_view.py
 ```
 
-**Keyboard Controls:**
+**Method 2 — Pass IP on the command line (no config file needed):**
+
+```bash
+python src/raw_view.py --ip http://192.168.1.X/
+```
+
+**Method 3 — Use the Makefile:**
+
+```bash
+make viewer ESP_IP=http://192.168.1.X/
+```
+
+**Keyboard controls in the viewer window:**
 
 | Key | Action |
 |-----|--------|
 | `q` | Quit |
 | `s` | Save snapshot to `snapshots/` |
 | `r` | Toggle video recording to `recordings/` |
-| `1` | Set resolution to SVGA (800×600) |
-| `2` | Set resolution to UXGA (1600×1200) |
-| `3` | Set resolution to VGA (640×480) |
-| `4` | Set resolution to QVGA (320×240) |
-| `5` | Set resolution to QQVGA (160×120) |
+| `1` | SVGA (800×600) |
+| `2` | UXGA (1600×1200) |
+| `3` | VGA (640×480) |
+| `4` | QVGA (320×240) |
+| `5` | QQVGA (160×120) |
 | `f` | Toggle face detection |
 | `z` | Toggle QR code reader |
 | `m` | Toggle motion detection |
 | `t` | Toggle telemetry overlay |
-| `o` | Rotate stream 90° CW (cycles 0→90→180→270→0) |
-| `g` | Toggle rule-of-thirds grid overlay |
+| `o` | Rotate stream 90° CW |
+| `g` | Toggle rule-of-thirds grid |
 | `c` | Toggle center crosshair |
 | `l` | Toggle built-in LED |
 | `L` | Flash LED 5 times |
-| `h` | Show help |
+| `h` | Show help overlay |
 
-**Linux users:** If you see `QFontDatabase: Cannot find font directory`, just ignore it — it’s a harmless Qt warning and the video window will appear as usual.
+> **Linux users:** If you see `QFontDatabase: Cannot find font directory` — it's harmless, ignore it.
 
-### 7. (Optional) Use the Web Dashboard
+---
 
-Open a browser and navigate to:
+### Step 7: Use the Web Dashboard
+
+The ESP32 serves an embedded web dashboard. Open your browser to:
 
 ```
-http://IP/dashboard
+http://192.168.1.X/dashboard
 ```
 
-The dashboard provides the same controls through a polished web UI: view the live stream, change resolution, toggle the LED, take snapshots, rotate the stream, toggle fullscreen, and monitor telemetry in real time.
-
-**Web Dashboard keyboard shortcuts:**
+**Dashboard keyboard shortcuts:**
 
 | Key | Action |
 |-----|--------|
@@ -288,298 +344,322 @@ The dashboard provides the same controls through a polished web UI: view the liv
 | `1`–`6` | Set resolution (QQVGA..UXGA) |
 | `Esc` | Exit fullscreen |
 
-### 8. (Optional) OTA Firmware Updates
+---
 
-Once the board is on WiFi, you can upload new firmware over the air instead of via USB:
+### Step 8: OTA Firmware Updates
+
+Once the board is on WiFi, you can upload firmware **over the air** without USB:
 
 ```bash
-pio run -t upload --upload-port IP
+pio run -t upload --upload-port 192.168.1.X
 ```
 
 The board identifies itself as `xiao-esp32s3-cam` on the network.
 
-### 9. Vision LLM
-
-Stream the live camera feed to a local Ollama vision model for real-time AI descriptions. This is a separate tool that does not interfere with `raw_view.py`.
-
+**OTA via Makefile:**
 ```bash
-python vision_llm.py
+make ota ESP_IP=http://192.168.1.X/
 ```
 
-You will be prompted to select a model and analysis interval. The video window shows:
-- The live feed with the model's description overlaid on a dark info panel
-- Auto-analysis at your chosen interval (or press `n` for manual)
-- All text rendered with drop shadows for readability
+---
 
-**Prerequisites:** [Ollama](https://ollama.ai) running locally with at least one vision model pulled.
+### Step 9: Vision LLM
 
-**Controls:**
+Stream the camera feed to a local Ollama vision model for real-time AI description.
+
+**Prerequisites:**
+
+```bash
+# Install Ollama (if not already)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull a vision model
+ollama pull gemma3:latest
+# Alternatives: llama3.2-vision, llava:7b, qwen2.5vl:7b
+```
+
+**Run the vision CLI:**
+
+```bash
+python src/vision_llm.py --ip http://192.168.1.X/
+```
+
+**Or via Makefile:**
+```bash
+make vision ESP_IP=http://192.168.1.X/
+```
+
+**Controls in the vision window:**
 
 | Key | Action |
 |-----|--------|
 | `q` | Quit |
-| `a` | Toggle auto-analysis on/off |
+| `a` | Toggle auto-analysis |
 | `n` | Analyze current frame now |
 | `o` | Rotate stream 90° CW |
-| `g` | Toggle rule-of-thirds grid overlay |
-| `h` | Show controls in terminal |
+| `g` | Toggle grid overlay |
+| `h` | Show help |
 
-### 10. Makefile Commands
+---
 
-A `Makefile` is provided for convenience:
+### Step 10: FastAPI Server (app.py)
+
+The full FastAPI server provides a web dashboard with ALL AI features:
 
 ```bash
-make viewer        # Run OpenCV viewer (set ESP_IP=http://... to override)
-make server        # Run FastAPI web server
-make vision        # Run Vision LLM CLI
-make test          # Run connectivity test
-make upload        # Upload firmware via USB
-make ota           # Upload firmware via OTA
-make monitor       # Open serial monitor
+python src/app.py --ip http://192.168.1.X/ --port 8000
 ```
 
-### 11. FastAPI Server (app.py)
-
-The FastAPI server provides a web dashboard with all AI features:
-
+**Or via Makefile:**
 ```bash
-python src/app.py
-# Or with custom options:
-python src/app.py --ip http://192.168.1.X/ --port 8000 --model gemma3:latest
+make server
 ```
 
 Open **http://localhost:8000** in your browser.
 
-**Web dashboard features (tabbed UI):**
-- Live MJPEG stream with grid overlay & rotation controls
-- AI Vision panel with model selector, analysis interval, and real-time LLM results
-- YOLO event log showing detected objects with confidence and severity
-- Semantic search — search archived frames by natural language
-- Adaptive controller status — shows current mode (normal/throttled/emergency)
-- ESP32 controls — LED, 6-level resolution, telemetry, snapshots
-- **Scene classification** — real-time indoor/outdoor/night/crowded detection
-- **Analytics tab** — FPS & latency charts (Chart.js), object detection stats, activity timeline
-- **Events tab** — full YOLO detection event log
-- **Alerts tab** — configurable alert rules with enable/disable and history
-- **Heatmap tab** — motion heatmap visualization with reset
+**Web dashboard tabs:**
+- **Dashboard** — Live stream, LED/resolution controls, telemetry
+- **Analytics** — FPS & latency charts (Chart.js), object stats, timeline
+- **Events** — YOLO detection event log
+- **Alerts** — Alert rules management (enable/disable, thresholds)
+- **Heatmap** — Motion heatmap visualization (with reset button)
 
-**REST API Endpoints:**
+**REST API endpoints** (all prefixed with `http://localhost:8000`):
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/stream` | GET | MJPEG video stream |
-| `/analysis` | GET | SSE stream of LLM analysis results |
+| `/stream` | GET | MJPEG stream from ESP32 |
+| `/analysis` | GET | SSE stream of LLM analysis |
 | `/analyze-now` | POST | Force immediate LLM analysis |
 | `/model` | POST | Set Ollama model |
 | `/interval` | POST | Set analysis interval |
 | `/events` | GET | YOLO detection events |
-| `/search` | GET/POST | Semantic video search |
-| `/system-status` | GET | Full system status with all subsystems |
+| `/search` | GET/POST | Semantic search |
+| `/system-status` | GET | Full system status |
 | `/health` | GET | ESP32 + Ollama connectivity |
-| `/telemetry` | GET | ESP32 telemetry proxy (includes IP, chip info) |
+| `/telemetry` | GET | ESP32 telemetry proxy |
 | `/led` | POST | Toggle LED |
-| `/res` | POST | Set resolution (QQVGA/QVGA/VGA/CIF/SVGA/UXGA) |
+| `/res` | POST | Set resolution |
 | `/models` | GET | Available Ollama models |
-| `/ping` | GET | Health check (status, IP, uptime) |
-| `/scene` | GET | Current scene classification + history |
-| `/timeline` | GET | Activity timeline entries and active events |
-| `/stats` | GET | Object counting statistics and top classes |
-| `/alerts` | GET | Alert rules, history, and stats |
-| `/alerts/{idx}` | PUT/DELETE | Update or delete alert rule |
-| `/metrics` | GET | Performance metrics time series |
-| `/heatmap` | GET | Motion heatmap as base64 JPEG |
-| `/heatmap/reset` | POST | Reset accumulated motion heatmap |
-| `/flip` | POST | Toggle camera vflip or hmirror |
-| `/diag` | GET | Full ESP32 diagnostics (chip, flash, PSRAM, SDK) |
-| `/dashboard-data` | GET | Aggregated telemetry for frontend |
+| `/ping` | GET | Health check |
+| `/scene` | GET | Scene classification |
+| `/timeline` | GET | Activity timeline |
+| `/stats` | GET | Object counting stats |
+| `/alerts` | GET | Alert rules |
+| `/alerts/{idx}` | PUT/DELETE | Update/delete alert |
+| `/metrics` | GET | Performance metrics |
+| `/heatmap` | GET | Motion heatmap (base64 JPEG) |
+| `/heatmap/reset` | POST | Reset heatmap |
+| `/flip` | POST | Toggle vflip/hmirror |
+| `/diag` | GET | Full ESP32 diagnostics |
+| `/dashboard-data` | GET | Aggregated telemetry |
+
+---
 
 ## Boss Mode
 
 > ☠️ **When YOLO detects a cell phone in the frame for more than 5 seconds, the system roasts you.**
 
-Boss Mode is a self-accountability feature built into `app.py`:
+Block your own distractions:
 
-1. **YOLO gatekeeper** (`EventGatekeeper`) continuously tracks cell phone detections.
-2. If a cell phone is in frame for **≥ 5 seconds**, it activates boss mode.
-3. **Ollama** receives the frame with an aggressive system prompt:
-   > *"You are a toxic, passive-aggressive boss. The user in this image is looking at their phone instead of coding. Roast them mercilessly in one short sentence based on what you see."*
-4. The roast appears on the web dashboard as **huge red text** with a shake animation.
-5. **espeak** yells the roast through your laptop speakers.
-
-Boss mode auto-deactivates when the phone leaves the frame, with a 10-second cooldown between roasts.
+1. **YOLO gatekeeper** (`src/ai/event_gatekeeper.py`) tracks cell phone detections continuously.
+2. If a phone is in frame for **≥ 5 seconds**, it activates boss mode.
+3. **Ollama** receives the frame with a toxic system prompt and roasts you.
+4. The roast appears on the dashboard as **huge red text** with shake animation.
+5. **espeak** yells the roast through your speakers.
 
 **Requirements:**
+
 ```bash
 sudo apt install espeak -y
 ```
 
+---
+
 ## How It Works
 
-```mermaid
-flowchart TB
-    subgraph ESP32["ESP32-S3 Firmware"]
-        CAM[Camera] --> ST[MJPEG Stream]
-        CAM --> SN[Snapshot]
-        SEN[Sensor API] --> RES[Resolution Switch]
-        OTA[ArduinoOTA]
-        WLED[GPIO 21 LED]
-        TELE[Telemetry JSON]
-        DASH[Web Dashboard HTML]
-    end
+### Architecture
 
-    subgraph Viewer["Python Viewer (raw_view.py)"]
-        BUF[Raw JPEG Buffer] --> DEC[Decode Frame]
-        DEC --> FACE[Face Detection]
-        DEC --> QR[QR Reader]
-        DEC --> MOT[Motion Detection]
-        DEC --> REC[Recording]
-        DEC --> SNAP[Snapshot Save]
-        DEC --> TEL_OV[Telemetry Overlay]
-        DEC --> DISP[OpenCV Display]
-        CTRL[Keyboard Input] --> ESP32
-    end
-
-    ESP32 -->|WiFi MJPEG| Viewer
-    Viewer -->|HTTP API| ESP32
+```
+┌─────────────────────┐     WiFi MJPEG      ┌────────────────────┐
+│   ESP32-S3 Firmware │ ◄──────────────────► │   Python Host Apps │
+│                     │     HTTP API         │                    │
+│  include/           │                      │  src/raw_view.py   │
+│  ├─ web_server.h    │                      │  src/vision_llm.py │
+│  ├─ wifi_manager.h  │                      │  src/app.py        │
+│  ├─ camera_utils.h  │                      │  src/ai/*.py       │
+│  └─ ota_manager.h   │                      │  src/core/*.py     │
+└─────────────────────┘                      └────────────────────┘
 ```
 
-```mermaid
-sequenceDiagram
-    participant CAM as Camera
-    participant ESP as ESP32 Server
-    participant PY as raw_view.py
-    participant DASH as Web Dashboard
+### Why a custom viewer?
 
-    CAM->>ESP: Capture JPEG frame
-    ESP->>PY: MJPEG stream (endless)
-    PY->>PY: Buffer & decode frames
-    PY->>PY: Face / QR / motion analysis
-    PY->>PY: Recording & snapshots
+OpenCV's `VideoCapture` uses a tight internal timeout and single-threaded execution. Even small WiFi delays cause it to throw errors or freeze.
 
-    PY->>ESP: POST /res?val=UXGA
-    ESP->>CAM: set_framesize()
-    ESP-->>PY: {"success":true}
+**Our approach in `src/raw_view.py`:**
+1. **Multi-threaded Capture** — background thread handles all network I/O
+2. **Self-Healing Buffer** — detects and discards corrupted JPEG data
+3. **Real-time Sync** — flushes buffer to always show the newest frame
+4. **Non-blocking Decode** — only complete JPEG frames reach the display
 
-    PY->>ESP: GET /led?state=on
-    ESP->>ESP: digitalWrite(LED, HIGH)
-    ESP-->>PY: {"success":true}
-
-    PY->>ESP: GET /telemetry
-    ESP-->>PY: {"heap":...,"uptime":...,"rssi":...}
-
-    DASH->>ESP: GET /dashboard
-    ESP-->>DASH: HTML+JS dashboard
-    DASH->>ESP: AJAX /telemetry (every 3s)
-    DASH->>ESP: AJAX /snapshot
-    DASH->>ESP: AJAX /led?state=on
-```
-
-```mermaid
-flowchart LR
-    subgraph ESP32["ESP32-S3"]
-        CAM[Camera] --> MJPEG[MJPEG Stream]
-    end
-
-    subgraph LOCAL["Your Machine"]
-        VL[vision_llm.py] -->|HTTP GET /| MJPEG
-        VL -->|base64 frame| OLLAMA[Ollama API :11434]
-        OLLAMA -->|JSON response| VL
-        VL --> DISPLAY[OpenCV Window + LLM Text]
-    end
-```
-
-**Why a custom viewer?**  
-OpenCV’s `VideoCapture` relies on a tight internal timeout and single-threaded execution. Even small WiFi delays can cause it to throw an error or freeze the entire window. Our approach:
-
-1. **Multi-threaded Capture:** A background thread handles all network I/O, preventing UI freezes.
-2. **Self-Healing Buffer:** Automatically detects and discards corrupted JPEG data to prevent buffer jams.
-3. **Real-time Sync:** Flushes the buffer queue to always display the absolute newest frame.
-4. **Non-blocking Decode:** Only complete JPEG frames are decoded and passed to the main thread for display.
-
-## HTTP API Endpoints
-
-The ESP32 exposes these REST endpoints:
+### ESP32 API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | MJPEG stream |
-| `/snapshot` | GET | Single JPEG frame |
-| `/res?val=QQVGA|QVGA|VGA|CIF|SVGA|UXGA` | GET | Change camera resolution (6 levels) |
-| `/led?state=on|off` | GET | Toggle built-in LED |
-| `/flash?count=N` | GET | Flash LED N times (1-20) |
-| `/telemetry` | GET | JSON: heap, uptime, RSSI, IP, resolution, PSRAM, total_PSRAM, temperature, chip_id, cpu_freq, camera_init_attempts, framesize |
-| `/ping` | GET | Health check: status, uptime, IP |
-| `/diag` | GET | Full chip diagnostics: model, cores, flash, PSRAM, SDK, firmware version |
-| `/flip?mode=v|h` | GET | Toggle vertical flip (v) or horizontal mirror (h) |
-| `/dashboard` | GET | Full web dashboard (embedded) |
+| `http://IP/` | GET | MJPEG stream |
+| `http://IP/snapshot` | GET | Single JPEG frame |
+| `http://IP/res?val=UXGA` | GET | Set resolution |
+| `http://IP/led?state=on` | GET | Toggle LED |
+| `http://IP/flash?count=5` | GET | Flash LED |
+| `http://IP/telemetry` | GET | JSON telemetry |
+| `http://IP/ping` | GET | Health check |
+| `http://IP/diag` | GET | Full diagnostics |
+| `http://IP/flip?mode=v` | GET | Toggle flip/mirror |
+| `http://IP/dashboard` | GET | HTML dashboard |
+
+---
 
 ## Troubleshooting
 
-| Problem | Likely Cause | Solution |
-|---------|-------------|----------|
-| Camera stream not working | PSRAM not enabled | Double‑check `platformio.ini` contains `-DBOARD_HAS_PSRAM` |
-| Upload fails | Bad USB cable or wrong port | Use a data USB‑C cable; try a different port |
-| No serial output after upload | Wrong baud rate | Make sure `monitor_speed = 115200` in `platformio.ini` |
-| `Stream Ready` never appears | WiFi credentials wrong | Verify SSID and password; use 2.4 GHz network |
-| Python viewer crashes with timeout | Using standard `VideoCapture` | Always use the provided `raw_view.py` |
-| `QFontDatabase: Cannot find font directory` | Missing desktop fonts (Linux) | Harmless warning – video window still opens |
-| OTA upload fails | Board not reachable | Ensure the board is on the same network and the IP is correct |
-| Motion detection not working | Lighting changes too subtle | Adjust `motion_threshold` in `raw_view.py` |
-| QR code not detected | Code too small or blurry | Hold QR code closer to the camera |
-| `vision_llm.py` cannot connect to Ollama | Ollama not running | Run `ollama serve` and verify with `ollama list` |
-| Vision model slow | Large model on CPU | Use a smaller model like `llava:7b` or `minicpm-v`; increase analysis interval |
-| Camera init fails repeatedly | PSRAM or power issue | Firmware auto-retries with VGA; check power supply |
-| `raw_view.py` reconnects slowly | Network latency | Exponential backoff retries with up to 3 attempts |
-| Need to test connectivity | Quick check | Run `python stream_test.py http://IP/` |
+| Problem | Likely Cause | File to Check | Solution |
+|---------|-------------|--------------|----------|
+| `'ssid' was not declared` | `src/config.h` missing | `src/config.h` | `cp src/config.example.h src/config.h` and fill credentials |
+| `LED_BUILTIN redefined` | Duplicate define in `web_server.h` | `include/web_server.h:11` | Already fixed — uses `#ifndef` guard now |
+| Camera stream blank | PSRAM not enabled | `platformio.ini` | Ensure `-DBOARD_HAS_PSRAM` is in `build_flags` |
+| Upload fails | Bad USB cable or port | — | Use a data cable; try different USB port |
+| No serial output | Wrong baud rate | `platformio.ini` | `monitor_speed = 115200` |
+| `Stream Ready` never appears | Wrong WiFi credentials | `src/config.h` | Verify SSID/password; use 2.4 GHz |
+| `QFontDatabase` warning | Missing desktop fonts | — | Harmless, ignore it |
+| OTA upload fails | Board unreachable | — | Same network? Check IP is correct |
+| Vision LLM can't connect | Ollama not running | — | `ollama serve` then `ollama list` |
+| Vision model slow | Large model on CPU | — | Use `llava:7b` or increase interval |
+| Camera init fails repeatedly | PSRAM or power issue | `include/camera_utils.h` | Firmware auto-retries with VGA fallback |
+| Viewer reconnects slowly | Network latency | `src/raw_view.py` | Exponential backoff — retries up to 3 times |
+| Need to test connectivity | Quick check | `src/stream_test.py` | `python src/stream_test.py http://IP/` |
 
-## Project Structure
+---
+
+## Project Structure with File Locations
 
 ```
-.
-├── Makefile                 # Common dev commands (`make viewer`, etc.)
-├── platformio.ini           # Board & PSRAM configuration
-├── README.md                # This documentation
-├── __pycache__/             # Python bytecode cache (gitignored)
-├── recordings/              # Captured video storage
-├── snapshots/               # Captured image storage
-├── chroma_db/               # ChromaDB persistent store (gitignored)
-├── lib/                     # Private libraries
-├── test/                    # PlatformIO test runner
-├── testing/                 # Manual test documentation
-├── include/                 # C++ firmware headers
-│   ├── camera_utils.h       # Camera init, diagnostics, 6-level resolution
-│   ├── wifi_manager.h       # WiFi connect with auto-reconnect
-│   ├── ota_manager.h        # Over-the-air updates
-│   ├── web_server.h         # HTTP server + all API handlers (incl. /ping)
-│   └── dashboard_html.h     # Embedded web dashboard HTML
-├── src/                     # Python host apps + firmware source
-│   ├── app.py               # FastAPI server (Edge Intelligence Platform v2.0.0)
-│   ├── raw_view.py          # Feature-rich Python viewer (with --ip CLI arg)
-│   ├── vision_llm.py        # Live feed → Ollama vision LLM (with --ip CLI arg)
-│   ├── stream_test.py       # Connectivity test script
-│   ├── index.html           # Web dashboard with tabbed UI and charts
-│   ├── config.py            # Your local IP (gitignored)
-│   ├── config.example.py    # Template — copy to config.py & set IP
-│   ├── config.h             # WiFi credentials (gitignored)
-│   ├── config.example.h     # Template — copy to config.h & set WiFi
-│   └── main.cpp             # ESP32 firmware entry point (v2.0.0 with diagnostics)
-└── esp32-s3/                # Older project version (reference)
-    ├── app.py               # FastAPI server (v1.0.0)
-    ├── raw_view.py          # Legacy viewer
-    ├── vision_llm.py        # Legacy vision client
-    ├── stream_test.py       # Connectivity test
-    ├── Makefile              # Common dev commands
-    ├── .dockerignore         # Docker build exclusions
-    ├── requirements.txt      # Python dependencies
-    ├── index.html
-    ├── platformio.ini
-    ├── include/             # C++ headers (identical to root include/)
-    └── src/                 # Firmware source
-        ├── config.example.h
-        └── main.cpp
+~/Projects/xiao/
+├── platformio.ini                 # Board config, PSRAM flags, upload speed
+├── Makefile                       # `make viewer`, `make server`, `make upload`, etc.
+├── README.md                      # This file
+│
+├── include/                       # C++ firmware headers
+│   ├── camera_utils.h             #   Camera init(`initCamera()`), 6-level resolution (`setResolution()`)
+│   ├── wifi_manager.h             #   WiFi connect (`connectWiFi()`), auto-reconnect (`handleWiFi()`)
+│   ├── ota_manager.h              #   Over-the-air update handler (`setupOTA()`, `handleOTA()`)
+│   ├── web_server.h               #   HTTP server + all API handlers (stream, snapshot, LED, telemetry, ping, diag, flip, dashboard)
+│   └── dashboard_html.h           #   Embedded HTML dashboard (served at /dashboard)
+│
+├── src/                           # Python host apps + firmware source
+│   ├── main.cpp                   #   ESP32 firmware entry point: setup() → initCamera → connectWiFi → setupOTA → startWebServer
+│   ├── config.h                   #   ← YOUR WIFI CREDENTIALS HERE (gitignored)
+│   ├── config.example.h           #   Template — copy to config.h
+│   ├── config.py                  #   ← YOUR ESP32 IP HERE (gitignored)
+│   ├── config.example.py          #   Template — copy to config.py
+│   ├── app.py                     #   FastAPI server (v2.0.0 Edge Intelligence Platform)
+│   ├── raw_view.py                #   Feature-rich OpenCV viewer (--ip CLI arg supported)
+│   ├── vision_llm.py              #   Live feed → Ollama vision LLM
+│   ├── stream_test.py             #   Connectivity test script
+│   ├── check_deps.py              #   Dependency and config validator
+│   ├── index.html                 #   Web dashboard HTML (tabbed UI + Chart.js)
+│   ├── api_utils.py               #   Shared API utilities
+│   │
+│   ├── ai/                        #   AI modules
+│   │   ├── __init__.py
+│   │   ├── event_gatekeeper.py    #     YOLO object detection + LLM trigger
+│   │   ├── motion_heatmap.py      #     Motion accumulation with exponential decay
+│   │   ├── object_counter.py      #     Cumulative detection stats
+│   │   ├── ollama_analyzer.py     #     Ollama vision LLM client
+│   │   ├── scene_classifier.py    #     Indoor/outdoor/night/crowded heuristics
+│   │   ├── smart_alert.py         #     Configurable alert rules
+│   │   ├── timeline_engine.py     #     Activity timeline + duration tracking
+│   │   └── vector_search.py       #     CLIP + ChromaDB semantic search
+│   │
+│   └── core/                      #   Core modules
+│       ├── __init__.py
+│       ├── adaptive_controller.py #     Auto-adjusts resolution/interval by RSSI
+│       ├── camera_capture.py      #     Frame capture thread for server
+│       ├── esp32_client.py        #     HTTP client to ESP32 endpoints
+│       ├── metrics_history.py     #     Ring buffer of FPS/latency/queue depth
+│       └── stream_buffer.py       #     Thread-safe JPEG buffer with flushing
+│
+├── esp32-s3/                      # Older project version (reference, kept for migration)
+│   ├── platformio.ini
+│   ├── Makefile
+│   ├── include/                   #   C++ headers (identical to root include/)
+│   │   ├── camera_utils.h
+│   │   ├── wifi_manager.h
+│   │   ├── ota_manager.h
+│   │   ├── web_server.h
+│   │   └── dashboard_html.h
+│   ├── src/
+│   │   ├── main.cpp
+│   │   ├── config.h               #   WiFi credentials (copy of root src/config.h)
+│   │   └── config.example.h
+│   ├── app.py
+│   ├── raw_view.py
+│   ├── vision_llm.py
+│   ├── stream_test.py
+│   └── index.html
+│
+├── recordings/                    # Video recordings directory (created at runtime, gitignored)
+├── snapshots/                     # Snapshot images directory (created at runtime, gitignored)
+├── chroma_db/                     # ChromaDB persistent store (gitignored)
+│
+├── test/                          # PlatformIO test runner
+├── testing/                       # Manual test documentation
+├── tests/                         # Python unit tests
+├── snapshots/                     # Old recordings
+├── recordings/                    # Old recordings
+│
+├── requirements.txt               # Python dependencies
+├── requirements-dev.txt           # Dev dependencies (ruff, mypy, pytest)
+├── pyproject.toml                 # Python project metadata
+├── py.typed                       # PEP 561 marker
+├── ruff.toml                      # Ruff linter config
+├── mypy.ini                       # Mypy type checker config
+├── pytest.ini                     # Pytest config
+├── .coveragerc                    # Coverage config
+├── .python-version                # pyenv Python version
+├── .env.example                   # Environment variables template
+├── .pre-commit-config.yaml        # Pre-commit hooks
+├── .gitignore                     # Git ignore rules
+│
+├── Dockerfile                     # Docker image for app.py
+├── docker-compose.yml             # Docker Compose for app.py + Ollama
+│
+├── CHANGELOG.md                   # Release history
+├── CODE_OF_CONDUCT.md             # Community guidelines
+├── CONTRIBUTING.md                # Contribution guide
+├── SECURITY.md                    # Security policy
+└── .github/workflows/ci.yml       # GitHub Actions CI
 ```
+
+---
 
 <div align="center">
+
+| Command | What it does |
+|---------|-------------|
+| `make viewer ESP_IP=http://IP/` | Run OpenCV viewer |
+| `make server` | Run FastAPI server |
+| `make vision ESP_IP=http://IP/` | Run Vision LLM |
+| `make test ESP_IP=http://IP/` | Connectivity test |
+| `make check` | Validate dependencies |
+| `make upload` | Upload firmware via USB |
+| `make ota ESP_IP=http://IP/` | Upload firmware via OTA |
+| `make monitor` | Open serial monitor |
+| `make lint` | Run ruff linter |
+| `make typecheck` | Run mypy type checker |
+| `make pytest` | Run Python tests |
+| `make docker-build` | Build Docker image |
+| `make docker-run` | Run Docker container |
+
 Built with ❤️ for reliable ESP32 video streaming
 Contributions and improvements welcome!
+
 </div>
