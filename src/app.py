@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.1.0 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.0.0 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -1133,7 +1133,7 @@ heatmap = MotionHeatmap(camera)
 app = FastAPI(
     title="ESP32-S3 Edge Intelligence Platform",
     description="Streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive controller, scene classification, activity timeline, object counting, smart alerts, heatmap",
-    version="2.1.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
