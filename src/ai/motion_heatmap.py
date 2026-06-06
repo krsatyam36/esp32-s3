@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import base64 as b64
 import io
 import logging
@@ -7,25 +9,30 @@ import time
 import cv2
 import numpy as np
 
+import typing
+
+if typing.TYPE_CHECKING:
+    from src.core.camera_capture import CameraCapture
+
 
 class MotionHeatmap:
-    def __init__(self, camera, decay=0.95):
+    def __init__(self, camera: CameraCapture, decay: float = 0.95) -> None:
         self.camera = camera
         self.decay = decay
         self._heatmap: np.ndarray | None = None
         self._lock = threading.Lock()
         self._running = False
-        self._prev_gray = None
+        self._prev_gray: np.ndarray | None = None
 
-    def start(self):
+    def start(self) -> None:
         self._running = True
         t = threading.Thread(target=self._loop, daemon=True)
         t.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._running = False
 
-    def _loop(self):
+    def _loop(self) -> None:
         while self._running:
             raw = self.camera.latest_frame
             if raw is not None:
@@ -63,7 +70,7 @@ class MotionHeatmap:
             import base64 as _b64
             return _b64.b64encode(buffer).decode("utf-8")
 
-    def reset(self):
+    def reset(self) -> None:
         with self._lock:
             self._heatmap = None
             self._prev_gray = None
