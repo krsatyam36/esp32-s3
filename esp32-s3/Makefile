@@ -1,4 +1,4 @@
-.PHONY: help viewer server vision test
+.PHONY: help viewer server vision test check deps
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -14,3 +14,9 @@ vision: ## Run the Vision LLM client
 
 test: ## Test ESP32 connectivity
 	python stream_test.py
+
+check: ## Validate project setup
+	python check_deps.py
+
+deps: ## Install Python dependencies
+	pip install -r requirements.txt
