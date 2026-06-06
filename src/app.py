@@ -38,13 +38,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel
 
-from config import ESP32_IP
+try:
+    from config import ESP32_IP as _IP
+    _BASE = _IP.rstrip("/")
+except (ImportError, NameError):
+    _BASE = os.environ.get("ESP32_IP", "http://192.168.1.X/").rstrip("/")
 
 # ──────────────────────────────────────────────
 #  Configuration
 # ──────────────────────────────────────────────
 
-BASE_URL = ESP32_IP.rstrip("/")
+BASE_URL = _BASE
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma3:latest")
 ANALYSIS_INTERVAL = float(os.environ.get("ANALYSIS_INTERVAL", "5"))
@@ -1466,5 +1470,13 @@ async def index():
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", "8000"))
-    uvicorn.run(app, host="0.0.0.0", port=port, reload=False, log_level="info")
+
+    _parser = argparse.ArgumentParser(description="ESP32-S3 Edge Intelligence Platform")
+    _parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")), help="Server port")
+    _parser.add_argument("--host", type=str, default="0.0.0.0", help="Server host")
+    _args, _ = _parser.parse_known_args()
+
+    port = _args.port
+    print(f"[startup] Server: http://{_args.host}:{port}")
+    print(f"[startup] ESP32_IP env: {os.environ.get('ESP32_IP', '(use config.py)')}")
+    uvicorn.run(app, host=_args.host, port=port, reload=False, log_level="info")
