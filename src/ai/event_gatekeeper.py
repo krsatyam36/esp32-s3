@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import threading
@@ -8,10 +10,19 @@ from datetime import datetime, timezone
 import cv2
 import numpy as np
 
+import typing
+
+if typing.TYPE_CHECKING:
+    from src.ai.ollama_analyzer import OllamaAnalyzer
+    from src.ai.object_counter import ObjectCounter
+    from src.ai.timeline_engine import TimelineEngine
+    from src.ai.smart_alert import AlertManager
+    from src.core.camera_capture import CameraCapture
+
 
 YOLO_CONF = float(os.environ.get("YOLO_CONFIDENCE", "0.35"))
 
-TARGET_CLASSES = {
+TARGET_CLASSES: dict[int, str] = {
     0: "person", 1: "bicycle", 2: "car", 3: "motorcycle", 5: "bus",
     6: "train", 7: "truck", 16: "dog", 17: "cat", 32: "sports ball",
     39: "bottle", 41: "cup", 43: "knife", 44: "spoon", 47: "mouse",
@@ -20,24 +31,24 @@ TARGET_CLASSES = {
     77: "teddy bear",
 }
 
-object_counter = None
-timeline = None
-alert_manager = None
+object_counter: ObjectCounter | None = None
+timeline: TimelineEngine | None = None
+alert_manager: AlertManager | None = None
 
 
 class EventGatekeeper:
-    def __init__(self, camera, analyzer):
+    def __init__(self, camera: CameraCapture, analyzer: OllamaAnalyzer) -> None:
         self.camera = camera
         self.analyzer = analyzer
-        self.model = None
-        self.ready = False
-        self.error = ""
-        self._running = False
-        self._events = deque(maxlen=200)
-        self._stats = {"detections": 0, "triggers": 0, "boss_roasts": 0}
+        self.model: typing.Any = None
+        self.ready: bool = False
+        self.error: str = ""
+        self._running: bool = False
+        self._events: deque[dict[str, object]] = deque(maxlen=200)
+        self._stats: dict[str, int] = {"detections": 0, "triggers": 0, "boss_roasts": 0}
         self._lock = threading.Lock()
-        self._cell_phone_since = 0.0
-        self._boss_triggered_at = 0.0
+        self._cell_phone_since: float = 0.0
+        self._boss_triggered_at: float = 0.0
         self._object_counter = object_counter
         self._timeline = timeline
         self._alert_manager = alert_manager
@@ -48,19 +59,19 @@ class EventGatekeeper:
         except Exception as e:
             self.error = f"YOLO load failed: {e}"
 
-    def start(self):
+    def start(self) -> None:
         if not self.ready:
             return
         self._running = True
         t = threading.Thread(target=self._loop, daemon=True)
         t.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._running = False
 
-    def _loop(self):
-        last_id = -1
-        last_llm_trigger = 0.0
+    def _loop(self) -> None:
+        last_id: int = -1
+        last_llm_trigger: float = 0.0
         while self._running:
             fid = self.camera.frame_id
             raw = self.camera.latest_frame
@@ -128,12 +139,12 @@ class EventGatekeeper:
             except Exception:
                 pass
 
-    def get_events(self, since: float = 0, limit: int = 50) -> list[dict]:
+    def get_events(self, since: float = 0, limit: int = 50) -> list[dict[str, object]]:
         with self._lock:
             events = [e for e in self._events if e["time"] >= since]
-            return events[-limit:]
+            return list(events)[-limit:]
 
     @property
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, object]:
         with self._lock:
             return {**self._stats, "queue": len(self._events)}
