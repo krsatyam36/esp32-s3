@@ -35,11 +35,12 @@ from collections import deque
 import cv2
 import numpy as np
 import requests
-from fastapi import FastAPI, Request, Query
+import uuid
+
+from fastapi import FastAPI, Request, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
-from fastapi import HTTPException
 from pydantic import BaseModel
 
 try:
@@ -131,6 +132,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = str(uuid.uuid4())[:8]
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 @app.on_event("startup")
