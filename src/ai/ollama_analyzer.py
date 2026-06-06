@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import base64
 import io
@@ -15,59 +17,59 @@ import requests
 from src.core.camera_capture import CameraCapture
 
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_URL: str = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
-OLLAMA_SYSTEM_PROMPT = (
+OLLAMA_SYSTEM_PROMPT: str = (
     "You are a real-time camera assistant. "
     "Describe what you see in 1-3 concise sentences. "
     "Focus on objects, people, text, colors, and motion. "
     "Start directly with the description \u2014 no introductory phrases."
 )
-BOSS_SYSTEM_PROMPT = (
+BOSS_SYSTEM_PROMPT: str = (
     "You are a toxic, passive-aggressive boss. "
     "The user in this image is looking at their phone instead of coding. "
     "Roast them mercilessly in one short sentence based on what you see."
 )
-OLLAMA_USER_PROMPT = "What do you see in this camera frame?"
+OLLAMA_USER_PROMPT: str = "What do you see in this camera frame?"
 
 
 class OllamaAnalyzer:
-    def __init__(self, camera: CameraCapture, model: str, interval: float = 5.0):
+    def __init__(self, camera: CameraCapture, model: str, interval: float = 5.0) -> None:
         self.camera = camera
         self.model = model
         self.interval = interval
-        self._last_text = ""
-        self._boss_mode = False
+        self._last_text: str = ""
+        self._boss_mode: bool = False
         self._lock = threading.Lock()
-        self._running = False
+        self._running: bool = False
         self._session = requests.Session()
         self._trigger = threading.Event()
-        self.last_latency = 0.0
+        self.last_latency: float = 0.0
 
-    def start(self):
+    def start(self) -> None:
         self._running = True
         t = threading.Thread(target=self._loop, daemon=True)
         t.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._running = False
 
-    def trigger_now(self):
+    def trigger_now(self) -> None:
         self._trigger.set()
 
-    def set_model(self, model: str):
+    def set_model(self, model: str) -> None:
         with self._lock:
             self.model = model
 
-    def set_interval(self, interval: float):
+    def set_interval(self, interval: float) -> None:
         with self._lock:
             self.interval = max(1.0, interval)
 
-    def activate_boss_mode(self):
+    def activate_boss_mode(self) -> None:
         with self._lock:
             self._boss_mode = True
 
-    def deactivate_boss_mode(self):
+    def deactivate_boss_mode(self) -> None:
         with self._lock:
             self._boss_mode = False
 
@@ -75,7 +77,7 @@ class OllamaAnalyzer:
         with self._lock:
             return self._boss_mode
 
-    def _say(self, text: str):
+    def _say(self, text: str) -> None:
         try:
             subprocess.Popen(
                 ["espeak", "-v", "en-us", "-s", "150", "-p", "60", text],
@@ -85,8 +87,8 @@ class OllamaAnalyzer:
         except Exception:
             pass
 
-    def _loop(self):
-        last_frame_id = -1
+    def _loop(self) -> None:
+        last_frame_id: int = -1
         while self._running:
             forced = self._trigger.wait(timeout=self.interval)
             self._trigger.clear()
@@ -103,7 +105,7 @@ class OllamaAnalyzer:
                     current_model = self.model
                     boss = self._boss_mode
                 t0 = time.time()
-                payload = {
+                payload: dict[str, object] = {
                     "model": current_model,
                     "system": BOSS_SYSTEM_PROMPT if boss else OLLAMA_SYSTEM_PROMPT,
                     "prompt": OLLAMA_USER_PROMPT if not boss else "Roast them.",
@@ -115,7 +117,7 @@ class OllamaAnalyzer:
                 )
                 self.last_latency = time.time() - t0
                 if resp.status_code == 200:
-                    text = resp.json().get("response", "").strip()
+                    text: str = resp.json().get("response", "").strip()
                     with self._lock:
                         self._last_text = text
                     if boss and text:
