@@ -16,7 +16,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install ruff
-      - run: ruff check src/
+      - run: ruff check src/ --output-format=github
       - run: ruff format --check src/
 
   test:
