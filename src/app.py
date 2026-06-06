@@ -137,9 +137,21 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())[:8]
+    start = time.time()
     response = await call_next(request)
+    elapsed = time.time() - start
     response.headers["X-Request-ID"] = request_id
+    response.headers["X-Response-Time"] = f"{elapsed*1000:.0f}ms"
     return response
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc), "path": str(request.url.path)},
+        headers={"X-Request-ID": str(uuid.uuid4())[:8]},
+    )
 
 
 @app.on_event("startup")
