@@ -1,0 +1,12 @@
+services:
+  edge-server:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ESP32_IP=${ESP32_IP:-http://192.168.1.100}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
