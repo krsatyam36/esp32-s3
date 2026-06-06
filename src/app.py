@@ -1117,13 +1117,13 @@ class MotionHeatmap:
 camera = CameraCapture(BASE_URL + "/")
 analyzer = OllamaAnalyzer(camera=camera, model=OLLAMA_MODEL, interval=ANALYSIS_INTERVAL)
 vector_search = VectorSearch(camera=camera, interval=VECTOR_INTERVAL)
-gatekeeper = EventGatekeeper(camera=camera, analyzer=analyzer)
-controller = AdaptiveController(analyzer=analyzer, camera=camera, esp32=esp32)
-scene_classifier = SceneClassifier(camera)
 timeline = TimelineEngine()
 object_counter = ObjectCounter()
 alert_manager = AlertManager()
 metrics_history = MetricsHistory()
+gatekeeper = EventGatekeeper(camera=camera, analyzer=analyzer)
+controller = AdaptiveController(analyzer=analyzer, camera=camera, esp32=esp32)
+scene_classifier = SceneClassifier(camera)
 heatmap = MotionHeatmap(camera)
 
 # ──────────────────────────────────────────────
