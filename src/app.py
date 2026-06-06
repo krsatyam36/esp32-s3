@@ -118,7 +118,7 @@ del _ac_mod, _eg_mod
 app = FastAPI(
     title="ESP32-S3 Edge Intelligence Platform",
     description="Streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive controller, scene classification, activity timeline, object counting, smart alerts, heatmap",
-    version="2.1.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -509,6 +509,41 @@ async def health():
     except Exception as e:
         status["ollama"]["error"] = str(e)
     return status
+
+
+@app.get("/api/stats")
+async def api_stats():
+    processes = []
+    with os.scandir("/proc") if os.path.exists("/proc") else type("", (), {"__iter__": lambda _: iter([])})() as _:
+        pass
+    return {
+        "uptime_seconds": time.time() - _start_time,
+        "python_version": sys.version.split()[0],
+        "memory": {"rss": None, "vms": None},
+        "cpu_percent": None,
+        "threads": threading.active_count(),
+    }
+
+
+@app.get("/api/config")
+async def api_config():
+    return {
+        "esp32_url": BASE_URL,
+        "ollama_url": OLLAMA_URL,
+        "ollama_model": OLLAMA_MODEL,
+        "analysis_interval": ANALYSIS_INTERVAL,
+        "vector_interval": VECTOR_INTERVAL,
+        "yolo_confidence": YOLO_CONF,
+    }
+
+
+@app.post("/api/restart")
+async def api_restart():
+    async def delayed_restart():
+        await asyncio.sleep(1)
+        os._exit(0)
+    asyncio.create_task(delayed_restart())
+    return {"status": "restarting"}
 
 
 # ─── Serve Frontend ──────────────────────────
