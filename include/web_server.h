@@ -9,6 +9,9 @@
 #define PART_BOUNDARY "123456789000000000000987654321"
 #define FIRMWARE_VERSION "2.0.0"
 #define LED_BUILTIN 21
+#define FW_NAME "xiao-esp32s3-cam"
+
+static unsigned long _start_ms = 0;
 
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
@@ -273,13 +276,32 @@ static esp_err_t diag_handler(httpd_req_t *req) {
 }
 
 static esp_err_t ping_handler(httpd_req_t *req) {
-    char json[128];
-    snprintf(json, sizeof(json),
-        "{\"status\":\"ok\",\"uptime\":%lu,\"ip\":\"%s\"}",
-        millis() / 1000, WiFi.localIP().toString().c_str());
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json, strlen(json));
-    return ESP_OK;
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+        "{\"status\":\"ok\",\"uptime\":%lu,\"ip\":\"%s\",\"fw\":\"%s\",\"hostname\":\"%s\"}",
+        millis() / 1000,
+        WiFi.localIP().toString().c_str(),
+        FIRMWARE_VERSION,
+        FW_NAME
+    );
+    return httpd_resp_send(req, buf, strlen(buf));
+}
+
+static esp_err_t status_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/json");
+    char buf[512];
+    snprintf(buf, sizeof(buf),
+        "{\"status\":\"ok\",\"uptime\":%lu,\"heap\":%u,\"psram\":%u,\"rssi\":%d,\"ip\":\"%s\",\"fw\":\"%s\",\"free_blocks\":%u}",
+        millis() / 1000,
+        esp_get_free_heap_size(),
+        ESP.getPsramSize(),
+        WiFi.RSSI(),
+        WiFi.localIP().toString().c_str(),
+        FIRMWARE_VERSION,
+        heap_caps_get_largest_free_block(MALLOC_CAP_8BIT)
+    );
+    return httpd_resp_send(req, buf, strlen(buf));
 }
 
 static esp_err_t dashboard_handler(httpd_req_t *req) {
@@ -353,6 +375,12 @@ void startWebServer() {
         .handler = dashboard_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t status_uri = {
+        .uri = "/status",
+        .method = HTTP_GET,
+        .handler = status_handler,
+        .user_ctx = NULL
+    };
 
     Serial.printf("Starting web server on port: %d\n", config.server_port);
     if (httpd_start(&stream_httpd, &config) == ESP_OK) {
@@ -366,6 +394,7 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &ping_uri);
         httpd_register_uri_handler(stream_httpd, &diag_uri);
         httpd_register_uri_handler(stream_httpd, &dashboard_uri);
+        httpd_register_uri_handler(stream_httpd, &status_uri);
         Serial.println("Server started with all endpoints");
     } else {
         Serial.println("Server start failed");
