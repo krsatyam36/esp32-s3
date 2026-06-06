@@ -27,6 +27,7 @@
     .toast { position: fixed; bottom: 20px; right: 20px; z-index: 9999; transition: all 0.3s ease; }
     .toast-enter { opacity: 0; transform: translateY(20px); }
     .toast-visible { opacity: 1; transform: translateY(0); }
+    kbd.key-hint { display: inline-block; min-width: 20px; padding: 1px 6px; background: rgba(255,255,255,0.08); border-radius: 4px; font-family: monospace; text-align: center; color: #e2e8f0; margin-right: 4px; }
     .stream-wrapper { position: relative; background: #000; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; border: 1px solid rgba(255,255,255,0.06); }
     .stream-wrapper img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .stream-wrapper img.rot-90 { transform: rotate(90deg); }
@@ -372,9 +373,27 @@
   </div>
 
   <footer class="mt-5 text-center text-[11px] text-slate-700">
-    ESP32-S3 Edge Intelligence Platform v2.1.0 &middot; 
+    ESP32-S3 Edge Intelligence Platform v2.0.0 &middot; 
     <span class="text-slate-600">Scene: <span id="footerScene" class="text-sky-600">--</span></span>
+    &middot; <span class="cursor-pointer text-slate-600 hover:text-slate-400" onclick="toggleHelp()">[?] Help</span>
   </footer>
+  <div id="helpOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 hidden" onclick="toggleHelp()">
+    <div class="glass-card rounded-2xl p-6 max-w-md w-full mx-4 text-sm" onclick="event.stopPropagation()">
+      <h3 class="text-base font-bold text-white mb-3">Keyboard Shortcuts</h3>
+      <div class="grid grid-cols-2 gap-2 text-slate-400">
+        <span><kbd class="key-hint">s</kbd> Snapshot</span>
+        <span><kbd class="key-hint">1-6</kbd> Resolution</span>
+        <span><kbd class="key-hint">r</kbd> Rotate 90&deg;</span>
+        <span><kbd class="key-hint">0</kbd> Reset rotation</span>
+        <span><kbd class="key-hint">g</kbd> Toggle grid</span>
+        <span><kbd class="key-hint">l</kbd> LED on/off</span>
+        <span><kbd class="key-hint">L</kbd> Flash LED</span>
+        <span><kbd class="key-hint">n</kbd> Analyze frame</span>
+        <span><kbd class="key-hint">?</kbd> Toggle help</span>
+      </div>
+      <button class="mt-4 w-full py-2 rounded-xl bg-white/5 text-xs text-slate-400 hover:bg-white/10" onclick="toggleHelp()">Close</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast" class="fixed bottom-6 right-6 glass rounded-xl px-5 py-3 text-sm font-medium text-white hidden z-50 shadow-2xl border-l-4 border-sky-500"></div>
@@ -830,6 +849,8 @@ async function resetHeatmap() {
 }
 
 // ── Keyboard ──
+function toggleHelp() { document.getElementById('helpOverlay').classList.toggle('hidden'); }
+
 document.addEventListener('keydown', e => {
   if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); takeSnapshot(); }
   if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey) {
@@ -844,6 +865,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'g' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleGrid(); }
   if (e.key === 'l' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setLed('on'); }
   if (e.key === 'L' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); flashLed(); }
+  if (e.key === '?' || (e.key === '/' && e.shiftKey)) { e.preventDefault(); toggleHelp(); }
 });
 
 // ── Init Charts after DOM ──
