@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import http.client
 import socket
 import threading
@@ -10,23 +12,23 @@ from src.core.stream_buffer import StreamBuffer
 
 
 class CameraCapture:
-    def __init__(self, stream_url: str):
+    def __init__(self, stream_url: str) -> None:
         self._url = stream_url
         self._buffer = StreamBuffer()
         self._latest_frame: bytes | None = None
         self._lock = threading.Lock()
         self._running = False
         self._frame_id = 0
-        self._frame_timestamps: deque = deque(maxlen=120)
+        self._frame_timestamps: deque[float] = deque(maxlen=120)
         self._capture_start = 0.0
 
-    def start(self):
+    def start(self) -> None:
         self._running = True
         self._capture_start = time.time()
         t = threading.Thread(target=self._capture_loop, daemon=True)
         t.start()
 
-    def stop(self):
+    def stop(self) -> None:
         self._running = False
 
     @property
@@ -56,7 +58,7 @@ class CameraCapture:
     def uptime(self) -> float:
         return time.time() - self._capture_start if self._capture_start else 0.0
 
-    def _capture_loop(self):
+    def _capture_loop(self) -> None:
         while self._running:
             stream = None
             try:
