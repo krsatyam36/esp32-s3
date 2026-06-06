@@ -536,6 +536,7 @@ async function fetchSystemStatus() {
     const a = d.adaptive;
     $('modeDisplay').textContent = a.mode;
     $('modeDisplay').className = 'font-semibold mode-' + a.mode + ' text-[11px]';
+    $('fpsDisplay').textContent = (d.camera?.capture_fps || 0) + ' FPS';
     $('statsDetections').textContent = d.gatekeeper?.detections || 0;
     $('statsClasses').textContent = d.metrics?.points || 0;
   } catch(e) {}
