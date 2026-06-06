@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import urllib.error
@@ -22,7 +24,7 @@ class ResValue(BaseModel):
 
 
 class ESP32Client:
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str) -> None:
         self.base_url = base_url
 
     def send_command(self, endpoint: str) -> dict:
