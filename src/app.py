@@ -1451,6 +1451,37 @@ async def diagnostics():
     except Exception as e:
         return {"esp32": None, "error": str(e), "cached": False}
 
+# ─── Dashboard Aggregation ───────────────────
+
+@app.get("/dashboard-data")
+async def dashboard_data():
+    """Aggregated dashboard data for the frontend."""
+    tele = esp32.get_telemetry()
+    try:
+        scene_data = {"current": scene_classifier.current}
+    except Exception:
+        scene_data = {"current": "unknown"}
+
+    try:
+        system = controller.summary
+    except Exception:
+        system = {}
+
+    try:
+        gate_stats = gatekeeper.stats
+    except Exception:
+        gate_stats = {}
+
+    return {
+        "telemetry": tele,
+        "scene": scene_data,
+        "adaptive": system,
+        "gatekeeper": gate_stats,
+        "metrics": metrics_history.summary if metrics_history else {},
+        "alerts": alert_manager.stats if alert_manager else {},
+    }
+
+
 # ─── Health & Status ─────────────────────────
 
 @app.get("/health")
