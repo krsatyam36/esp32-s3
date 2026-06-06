@@ -2,7 +2,8 @@
 
 # Seeed XIAO ESP32S3 Sense — Low Latency Streamer
 
-**v1.0.0** — *Robust, low-latency video streaming from ESP32S3 Sense camera over WiFi*
+**v1.0.0** (legacy reference) — *Robust, low-latency video streaming from ESP32S3 Sense camera over WiFi*
+> This directory is the v1.0.0 reference implementation. The active development is in the project root.
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1+-F58220?style=flat&logo=platformio&logoColor=white)](https://platformio.org)
 [![ESP32](https://img.shields.io/badge/ESP32-S3-E7352C?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com)
