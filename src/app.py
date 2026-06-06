@@ -115,6 +115,8 @@ del _ac_mod, _eg_mod
 #  FastAPI Application
 # ──────────────────────────────────────────────
 
+_start_time = time.time()
+
 app = FastAPI(
     title="ESP32-S3 Edge Intelligence Platform",
     description="Streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive controller, scene classification, activity timeline, object counting, smart alerts, heatmap",
