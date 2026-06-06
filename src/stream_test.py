@@ -46,6 +46,7 @@ def main():
     results.append(test_endpoint(base_url, "Snapshot", "/snapshot", expect_json=False))
     results.append(test_endpoint(base_url, "Telemetry", "/telemetry", expect_json=True))
     results.append(test_endpoint(base_url, "Ping", "/ping", expect_json=True))
+    results.append(test_endpoint(base_url, "Diag", "/diag", expect_json=True))
 
     print(f"\n--- Results ---")
     passed = sum(results)
