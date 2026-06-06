@@ -1,17 +1,18 @@
+from __future__ import annotations
+
 import io
 import logging
 from collections import deque
-from typing import Optional
 
 import cv2
 import numpy as np
 
 
 class StreamBuffer:
-    def __init__(self):
-        self._buf = b""
+    def __init__(self) -> None:
+        self._buf: bytes = b""
 
-    def feed(self, data: bytes):
+    def feed(self, data: bytes) -> None:
         self._buf += data
 
     def get_frame(self) -> bytes | None:
