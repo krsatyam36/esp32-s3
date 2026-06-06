@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 import logging
 import threading
@@ -5,10 +7,10 @@ import time
 
 
 class MetricsHistory:
-    def __init__(self, max_points=300):
-        self._points = collections.deque(maxlen=max_points)
+    def __init__(self, max_points: int = 300) -> None:
+        self._points: collections.deque[dict[str, object]] = collections.deque(maxlen=max_points)
         self._lock = threading.Lock()
-        self._start_time = time.time()
+        self._start_time: float = time.time()
 
     def record(self, fps: float, latency: float, queue_depth: int, mode: str):
         with self._lock:
