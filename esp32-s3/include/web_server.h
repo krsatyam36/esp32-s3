@@ -7,6 +7,7 @@
 #include "dashboard_html.h"
 
 #define PART_BOUNDARY "123456789000000000000987654321"
+#define FIRMWARE_VERSION "1.3.0"
 #define LED_BUILTIN 21
 
 static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
@@ -204,11 +205,47 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
 
 // ==================== PING / HEALTH ====================
 
+static esp_err_t diag_handler(httpd_req_t *req) {
+    char json[512];
+    snprintf(json, sizeof(json),
+        "{"
+        "\"chip_model\":\"%s\","
+        "\"chip_cores\":%d,"
+        "\"cpu_freq\":%d,"
+        "\"flash_size\":%lu,"
+        "\"psram_size\":%lu,"
+        "\"free_heap\":%lu,"
+        "\"free_psram\":%lu,"
+        "\"sketch_size\":%lu,"
+        "\"free_sketch\":%lu,"
+        "\"sdk_version\":\"%s\","
+        "\"firmware_version\":\"%s\","
+        "\"uptime\":%lu,"
+        "\"wifi_rssi\":%d"
+        "}",
+        ESP.getChipModel(),
+        ESP.getChipCores(),
+        ESP.getCpuFreqMHz(),
+        ESP.getFlashChipSize(),
+        ESP.getPsramSize(),
+        ESP.getFreeHeap(),
+        ESP.getFreePsram(),
+        ESP.getSketchSize(),
+        ESP.getFreeSketchSpace(),
+        ESP.getSdkVersion(),
+        FIRMWARE_VERSION,
+        millis() / 1000,
+        WiFi.RSSI());
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
 static esp_err_t ping_handler(httpd_req_t *req) {
     char json[128];
     snprintf(json, sizeof(json),
-        "{\"status\":\"ok\",\"ip\":\"%s\",\"uptime\":%lu}",
-        WiFi.localIP().toString().c_str(), millis() / 1000);
+        "{\"status\":\"ok\",\"uptime\":%lu,\"ip\":\"%s\"}",
+        millis() / 1000, WiFi.localIP().toString().c_str());
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
@@ -271,6 +308,12 @@ void startWebServer() {
         .handler = ping_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t diag_uri = {
+        .uri = "/diag",
+        .method = HTTP_GET,
+        .handler = diag_handler,
+        .user_ctx = NULL
+    };
     httpd_uri_t dashboard_uri = {
         .uri = "/dashboard",
         .method = HTTP_GET,
@@ -287,6 +330,7 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &flash_uri);
         httpd_register_uri_handler(stream_httpd, &telemetry_uri);
         httpd_register_uri_handler(stream_httpd, &ping_uri);
+        httpd_register_uri_handler(stream_httpd, &diag_uri);
         httpd_register_uri_handler(stream_httpd, &dashboard_uri);
         Serial.println("Server started with all endpoints");
     } else {
