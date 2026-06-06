@@ -109,6 +109,12 @@ def main():
     else:
         print(f"  [FAIL] src/config.py not found! Copy from src/config.example.py")
 
+    dot_env = root / ".env"
+    if dot_env.exists():
+        print(f"  [OK] .env file found")
+    else:
+        print(f"  [INFO] .env not present — using env vars or config.py")
+
     config_h = root / "src" / "config.h"
     config_h2 = root / "src" / "config.h"
     # Check both locations
