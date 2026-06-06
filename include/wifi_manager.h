@@ -2,6 +2,9 @@
 
 #include <WiFi.h>
 #include <Arduino.h>
+
+#define WIFI_TIMEOUT_MS 20000
+#define WIFI_RECONNECT_DELAY_MS 10000
 #include "config.h"
 
 static unsigned long last_wifi_check = 0;
