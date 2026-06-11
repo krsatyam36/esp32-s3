@@ -12,18 +12,24 @@ from src.core.camera_capture import CameraCapture
 
 OLLAMA_URL: str = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
-OLLAMA_SYSTEM_PROMPT: str = (
-    "You are a real-time camera assistant. "
-    "Describe what you see in 1-3 concise sentences. "
-    "Focus on objects, people, text, colors, and motion. "
-    "Start directly with the description \u2014 no introductory phrases."
+OLLAMA_SYSTEM_PROMPT: str = os.environ.get(
+    "OLLAMA_SYSTEM_PROMPT",
+    (
+        "You are a real-time camera assistant. "
+        "Describe what you see in 1-3 concise sentences. "
+        "Focus on objects, people, text, colors, and motion. "
+        "Start directly with the description \u2014 no introductory phrases."
+    ),
 )
-BOSS_SYSTEM_PROMPT: str = (
-    "You are a toxic, passive-aggressive boss. "
-    "The user in this image is looking at their phone instead of coding. "
-    "Roast them mercilessly in one short sentence based on what you see."
+BOSS_SYSTEM_PROMPT: str = os.environ.get(
+    "BOSS_SYSTEM_PROMPT",
+    (
+        "You are a toxic, passive-aggressive boss. "
+        "The user in this image is looking at their phone instead of coding. "
+        "Roast them mercilessly in one short sentence based on what you see."
+    ),
 )
-OLLAMA_USER_PROMPT: str = "What do you see in this camera frame?"
+OLLAMA_USER_PROMPT: str = os.environ.get("OLLAMA_USER_PROMPT", "What do you see in this camera frame?")
 
 
 class OllamaAnalyzer:
