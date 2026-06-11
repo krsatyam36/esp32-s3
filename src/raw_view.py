@@ -18,7 +18,9 @@ log = logging.getLogger("raw_view")
 
 parser = argparse.ArgumentParser(description="ESP32-S3 Camera Viewer")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
+parser.add_argument("--format", type=str, default="avi", choices=["avi", "mp4"], help="Recording format (avi or mp4)")
 args, _ = parser.parse_known_args()
+RECORDING_FORMAT = args.format
 
 def _auto_discover() -> str:
     """Auto-discover ESP32 IP via mDNS or network scan."""
@@ -224,12 +226,22 @@ class Recorder:
     def start(self, frame: np.ndarray):
         if self.recording:
             return
+        ext = RECORDING_FORMAT
+        codec = "XVID" if ext == "avi" else "avc1"
+        if ext == "mp4":
+            try:
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                test = cv2.VideoWriter()
+                if not test.isOpened():
+                    codec = "mp4v"
+            except Exception:
+                codec = "mp4v"
         self.filename = os.path.join(
             self.output_dir,
-            f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi",
+            f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}",
         )
         h, w = frame.shape[:2]
-        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        fourcc = cv2.VideoWriter_fourcc(*codec)
         self.writer = cv2.VideoWriter(self.filename, fourcc, 20.0, (w, h))
         self.recording = True
         print(f"Recording started: {self.filename}")
