@@ -219,12 +219,25 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    camera.stop()
-    analyzer.stop()
-    vector_search.stop()
-    gatekeeper.stop()
-    controller.stop()
-    heatmap.stop()
+    log.info("Shutting down all subsystems...")
+    shutdown_timeout = float(os.environ.get("SHUTDOWN_TIMEOUT", "5"))
+    tasks = []
+    for comp, name in [
+        (camera, "camera"),
+        (analyzer, "analyzer"),
+        (vector_search, "vector_search"),
+        (gatekeeper, "gatekeeper"),
+        (controller, "controller"),
+        (heatmap, "heatmap"),
+    ]:
+        try:
+            if hasattr(comp, "stop"):
+                comp.stop()
+                tasks.append(name)
+        except Exception as e:
+            log.error("Error stopping %s: %s", name, e)
+    log.info("Stopped %d subsystems: %s", len(tasks), ", ".join(tasks))
+    await asyncio.sleep(min(shutdown_timeout, 2))
 
 
 # ─── MJPEG Video Stream ───────────────────────
