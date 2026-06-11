@@ -63,6 +63,9 @@
     @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
     .typing::after { content:''; display:inline-block; width:6px; height:14px; background:#38bdf8; margin-left:4px; animation:blink 0.8s step-end infinite; vertical-align:middle; }
     @keyframes blink { 50% { opacity:0; } }
+    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+    .light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 75%); background-size: 200% 100%; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     .boss-mode-shake { animation:bossShake 0.6s ease-in-out; }
     @keyframes bossShake { 0%,100%{transform:translateX(0)} 10%{transform:translateX(-6px)} 20%{transform:translateX(6px)} 30%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 50%{transform:translateX(-2px)} 60%{transform:translateX(2px)} }
     .btn-group { display:flex; gap:2px; }
