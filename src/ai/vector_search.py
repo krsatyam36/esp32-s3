@@ -89,6 +89,8 @@ class VectorSearch:
 
     def _loop(self) -> None:
         last_id: int = -1
+        self._last_index_time: float = 0.0
+        self._index_errors: int = 0
         while self._running:
             fid = self.camera.frame_id
             raw = self.camera.latest_frame
@@ -105,8 +107,9 @@ class VectorSearch:
                         )
                         with self._lock:
                             self._index_count += 1
+                            self._last_index_time = time.time()
                     except Exception:
-                        pass
+                        self._index_errors += 1
             time.sleep(self.interval)
 
     def search(self, query: str, top_k: int = 5) -> list[dict[str, object]]:
@@ -148,5 +151,7 @@ class VectorSearch:
             "ready": self.ready,
             "chroma_ok": self._ready_chroma,
             "index_count": self._index_count,
+            "last_index_time": round(getattr(self, "_last_index_time", 0), 1),
+            "index_errors": getattr(self, "_index_errors", 0),
             "error": self.error,
         }
