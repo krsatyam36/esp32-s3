@@ -20,6 +20,7 @@ if typing.TYPE_CHECKING:
 
 YOLO_CONF = float(os.environ.get("YOLO_CONFIDENCE", "0.35"))
 YOLO_SKIP = int(os.environ.get("YOLO_FRAME_SKIP", "0"))
+YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "yolov8n.pt")
 
 TARGET_CLASSES: dict[int, str] = {
     0: "person",
@@ -73,7 +74,7 @@ class EventGatekeeper:
         try:
             from ultralytics import YOLO
 
-            self.model = YOLO("yolov8n.pt")
+            self.model = YOLO(YOLO_MODEL_PATH)
             self.ready = True
         except Exception as e:
             self.error = f"YOLO load failed: {e}"
