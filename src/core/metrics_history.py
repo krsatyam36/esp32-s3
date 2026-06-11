@@ -37,13 +37,27 @@ class MetricsHistory:
             pts = list(self._points)
             if not pts:
                 return {}
-            fps_vals = [p["fps"] for p in pts]
-            lat_vals = [p["latency"] for p in pts]
+            fps_vals = sorted([p["fps"] for p in pts])
+            lat_vals = sorted([p["latency"] for p in pts])
+            n_fps = len(fps_vals)
+            n_lat = len(lat_vals)
+            def percentile(vals, p):
+                if not vals:
+                    return 0
+                k = max(0, min(len(vals) - 1, int(len(vals) * p / 100)))
+                return vals[k]
             return {
                 "points": len(pts),
-                "fps_avg": round(sum(fps_vals) / len(fps_vals), 1) if fps_vals else 0,
+                "fps_avg": round(sum(fps_vals) / n_fps, 1) if fps_vals else 0,
                 "fps_min": min(fps_vals) if fps_vals else 0,
                 "fps_max": max(fps_vals) if fps_vals else 0,
-                "latency_avg": round(sum(lat_vals) / len(lat_vals), 2) if lat_vals else 0,
+                "fps_p50": round(percentile(fps_vals, 50), 1),
+                "fps_p95": round(percentile(fps_vals, 95), 1),
+                "fps_p99": round(percentile(fps_vals, 99), 1),
+                "latency_avg": round(sum(lat_vals) / n_lat, 2) if lat_vals else 0,
                 "latency_max": max(lat_vals) if lat_vals else 0,
+                "latency_p50": round(percentile(lat_vals, 50), 2),
+                "latency_p95": round(percentile(lat_vals, 95), 2),
+                "latency_p99": round(percentile(lat_vals, 99), 2),
+                "uptime": round(time.time() - self._start_time, 1),
             }
