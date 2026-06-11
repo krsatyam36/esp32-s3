@@ -175,6 +175,17 @@ async def rate_limiter(request: Request, call_next):
     return response
 
 
+_API_VERSION = "2.1.0"
+
+
+@app.middleware("http")
+async def add_api_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-API-Version"] = _API_VERSION
+    response.headers["X-API-Name"] = "xiao-edge-platform"
+    return response
+
+
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())[:8]
