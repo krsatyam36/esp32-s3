@@ -508,6 +508,12 @@ async def get_stats():
     }
 
 
+@app.post("/stats/reset")
+async def reset_stats():
+    object_counter.reset()
+    return {"success": True}
+
+
 # ─── Feature 7: Smart Alert System ───────────
 
 
