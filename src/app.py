@@ -17,6 +17,7 @@ Dependencies:
 
 import asyncio
 import base64
+import collections
 import json
 import os
 import platform
@@ -138,6 +139,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+_rate_limit_store: dict[str, collections.deque] = {}
+_RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "60"))
+_RATE_WINDOW = 60.0
+
+@app.middleware("http")
+async def rate_limiter(request: Request, call_next):
+    client = request.client.host if request.client else "unknown"
+    now = time.time()
+    if client not in _rate_limit_store:
+        _rate_limit_store[client] = collections.deque()
+    window = _rate_limit_store[client]
+    while window and window[0] < now - _RATE_WINDOW:
+        window.popleft()
+    if len(window) >= _RATE_LIMIT:
+        return JSONResponse(
+            status_code=429,
+            content={"error": "rate_limit_exceeded", "retry_after": _RATE_WINDOW},
+            headers={"Retry-After": str(int(_RATE_WINDOW))},
+        )
+    window.append(now)
+    response = await call_next(request)
+    return response
 
 
 @app.middleware("http")
