@@ -202,6 +202,28 @@ static esp_err_t flash_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t ae_handler(httpd_req_t *req) {
+    char buf[16];
+    int val = 0;
+    if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) == ESP_OK) {
+        char v[8];
+        if (httpd_query_key_value(buf, "val", v, sizeof(v)) == ESP_OK) {
+            val = atoi(v);
+        }
+    }
+    sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No sensor");
+        return ESP_FAIL;
+    }
+    s->set_ae_level(s, val);
+    char json[64];
+    snprintf(json, sizeof(json), "{\"success\":true,\"ae_level\":%d}", val);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
 static esp_err_t reset_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, "{\"status\":\"restarting\"}");
@@ -397,6 +419,12 @@ void startWebServer() {
         .handler = status_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t ae_uri = {
+        .uri = "/ae",
+        .method = HTTP_GET,
+        .handler = ae_handler,
+        .user_ctx = NULL
+    };
 
     Serial.printf("Starting web server on port: %d\n", config.server_port);
     if (httpd_start(&stream_httpd, &config) == ESP_OK) {
@@ -412,6 +440,7 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &diag_uri);
         httpd_register_uri_handler(stream_httpd, &dashboard_uri);
         httpd_register_uri_handler(stream_httpd, &status_uri);
+        httpd_register_uri_handler(stream_httpd, &ae_uri);
         Serial.println("Server started with all endpoints");
     } else {
         Serial.println("Server start failed");
