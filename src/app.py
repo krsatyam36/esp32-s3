@@ -18,6 +18,7 @@ Dependencies:
 import asyncio
 import base64
 import collections
+import gc
 import json
 import logging
 import os
@@ -36,7 +37,7 @@ import requests
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
@@ -653,6 +654,45 @@ async def dashboard_data():
         "metrics": metrics_history.summary if metrics_history else {},
         "alerts": alert_manager.stats if alert_manager else {},
     }
+
+
+# ─── Prometheus Metrics ──────────────────────
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    tele = esp32.get_telemetry()
+    ps = os.getpid()
+    mem = gc.get_stats()
+    lines = [
+        "# HELP xiao_uptime_seconds Server uptime in seconds",
+        "# TYPE xiao_uptime_seconds gauge",
+        f"xiao_uptime_seconds {time.time() - _start_time}",
+        "# HELP xiao_esp32_rssi WiFi RSSI from ESP32",
+        "# TYPE xiao_esp32_rssi gauge",
+        f"xiao_esp32_rssi {tele.get('rssi', 0)}",
+        "# HELP xiao_esp32_heap Free heap on ESP32",
+        "# TYPE xiao_esp32_heap gauge",
+        f"xiao_esp32_heap {tele.get('heap', 0)}",
+        "# HELP xiao_esp32_uptime ESP32 uptime in seconds",
+        "# TYPE xiao_esp32_uptime gauge",
+        f"xiao_esp32_uptime {tele.get('uptime', 0)}",
+        "# HELP xiao_camera_fps Camera capture FPS",
+        "# TYPE xiao_camera_fps gauge",
+        f"xiao_camera_fps {getattr(camera, 'capture_fps', 0)}",
+        "# HELP xiao_python_threads Active Python threads",
+        "# TYPE xiao_python_threads gauge",
+        f"xiao_python_threads {threading.active_count()}",
+        "# HELP xiao_memory_rss Process memory RSS",
+        "# TYPE xiao_memory_rss gauge",
+    ]
+    try:
+        import psutil
+        proc = psutil.Process(ps)
+        lines.append(f"xiao_memory_rss {proc.memory_info().rss}")
+    except ImportError:
+        lines.append("xiao_memory_rss 0")
+    return Response(content="\n".join(lines), media_type="text/plain; charset=utf-8")
 
 
 # ─── Version & Info ──────────────────────────
