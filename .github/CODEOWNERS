@@ -1,0 +1,19 @@
+# Default owners
+* @krsatyam36
+
+# Firmware changes
+include/          @krsatyam36
+src/main.cpp      @krsatyam36
+platformio.ini    @krsatyam36
+
+# Python backend
+src/app.py        @krsatyam36
+src/core/         @krsatyam36
+src/ai/           @krsatyam36
+
+# Tests
+tests/            @krsatyam36
+
+# Infrastructure
+Dockerfile        @krsatyam36
+.github/          @krsatyam36
