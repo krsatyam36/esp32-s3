@@ -826,7 +826,8 @@ async function fetchEvents() {
         const objs = e.objects.map(o => o.class).join(', ');
         const sev = e.objects.some(o => ['person','dog','cat','car','laptop','cell phone'].includes(o.class)) ? 'high' : 'medium';
         const t = new Date(e.timestamp).toLocaleTimeString();
-        return '<div class="event-item ' + sev + ' fade-in"><div class="flex items-center justify-between"><span class="text-xs text-slate-300 font-medium truncate">' + esc(objs) + '</span><span class="text-[10px] text-slate-600 flex-shrink-0 ml-2">' + t + '</span></div></div>';
+        const sevLabel = sev === 'high' ? '<span class="text-[9px] font-bold text-red-400 uppercase ml-1">CRIT</span>' : '<span class="text-[9px] text-amber-400 uppercase ml-1">INFO</span>';
+        return '<div class="event-item ' + sev + ' fade-in"><div class="flex items-center justify-between"><span class="text-xs text-slate-300 font-medium truncate">' + esc(objs) + ' ' + sevLabel + '</span><span class="text-[10px] text-slate-600 flex-shrink-0 ml-2">' + t + '</span></div></div>';
       }).join('');
     }
     // Full list
