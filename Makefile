@@ -1,5 +1,6 @@
 .PHONY: viewer server vision test check upload ota monitor discover auto \
-        lint typecheck pytest clean docker-build docker-run help
+        lint typecheck pytest clean docker-build docker-run docker-buildx \
+        coverage-html pre-commit-all security-scan help
 
 # ESP32 IP (override with ESP_IP=...)
 ESP_IP ?= http://192.168.1.X/
@@ -73,6 +74,24 @@ docker-build:
 ## Run Docker container
 docker-run:
 	docker run -p 8000:8000 --env-file .env xiao-edge-platform
+
+## Multi-architecture Docker build (arm64/amd64)
+docker-buildx:
+	docker buildx build --platform linux/amd64,linux/arm64 -t xiao-edge-platform --push .
+
+## Generate and open HTML coverage report
+coverage-html:
+	python -m pytest tests/ --cov=src --cov-report=html
+	@echo "Coverage report: htmlcov/index.html"
+
+## Run pre-commit on all files
+pre-commit-all:
+	pre-commit run --all-files
+
+## Security scan with bandit
+security-scan:
+	@which bandit > /dev/null 2>&1 || pip install bandit; \
+	bandit -r src/ -f custom -q || true
 
 ## Show help
 help:
