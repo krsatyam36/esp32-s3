@@ -14,5 +14,15 @@ indent_style = tab
 [*.{html,css,js,json,yml,yaml}]
 indent_size = 2
 
-[*.md]
+[*.{c,cpp,h,hpp,ino}]
+indent_style = space
+indent_size = 4
+
+[*.py]
+indent_size = 4
+
+[*.{md,rst}]
 trim_trailing_whitespace = false
+
+[*.{toml,cfg,ini}]
+indent_size = 2
