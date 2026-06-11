@@ -18,6 +18,7 @@ Dependencies:
 import asyncio
 import base64
 import collections
+import gc
 import json
 import logging
 import os
@@ -33,16 +34,21 @@ import uuid
 import cv2
 import numpy as np
 import requests
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "json").lower()
+if LOG_FORMAT == "json":
+    _fmt = '{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","msg":"%(message)s"}'
+else:
+    _fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL, logging.INFO),
-    format='{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","msg":"%(message)s"}',
+    format=_fmt,
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
 log = logging.getLogger("xiao")
@@ -154,6 +160,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 _rate_limit_store: dict[str, collections.deque] = {}
 _RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "60"))
 _RATE_WINDOW = 60.0
+_MAX_BODY_SIZE = int(os.environ.get("MAX_BODY_SIZE", "1048576"))
 
 @app.middleware("http")
 async def rate_limiter(request: Request, call_next):
@@ -173,6 +180,17 @@ async def rate_limiter(request: Request, call_next):
     window.append(now)
     response = await call_next(request)
     return response
+
+
+@app.middleware("http")
+async def body_size_limit(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > _MAX_BODY_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "payload_too_large", "max_bytes": _MAX_BODY_SIZE},
+        )
+    return await call_next(request)
 
 
 _API_VERSION = "2.1.0"
@@ -305,6 +323,20 @@ async def video_stream():
 
 
 # ─── SSE Analysis Stream ──────────────────────
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            frame = camera.latest_frame
+            if frame is not None:
+                b64 = base64.b64encode(frame).decode()
+                await websocket.send_json({"type": "frame", "data": b64, "size": len(frame)})
+            await asyncio.sleep(0.1)
+    except WebSocketDisconnect:
+        pass
 
 
 @app.get("/analysis")
@@ -580,6 +612,12 @@ async def get_alert_history(limit: int = Query(50), since: float = Query(0)):
     return {"history": alert_manager.get_history(since=since, limit=limit)}
 
 
+@app.post("/alerts/clear")
+async def clear_alerts():
+    alert_manager.history.clear()
+    return {"success": True, "cleared": True}
+
+
 # ─── Feature 8: Performance Metrics ─────────
 
 
@@ -653,6 +691,45 @@ async def dashboard_data():
         "metrics": metrics_history.summary if metrics_history else {},
         "alerts": alert_manager.stats if alert_manager else {},
     }
+
+
+# ─── Prometheus Metrics ──────────────────────
+
+
+@app.get("/metrics")
+async def prometheus_metrics():
+    tele = esp32.get_telemetry()
+    ps = os.getpid()
+    mem = gc.get_stats()
+    lines = [
+        "# HELP xiao_uptime_seconds Server uptime in seconds",
+        "# TYPE xiao_uptime_seconds gauge",
+        f"xiao_uptime_seconds {time.time() - _start_time}",
+        "# HELP xiao_esp32_rssi WiFi RSSI from ESP32",
+        "# TYPE xiao_esp32_rssi gauge",
+        f"xiao_esp32_rssi {tele.get('rssi', 0)}",
+        "# HELP xiao_esp32_heap Free heap on ESP32",
+        "# TYPE xiao_esp32_heap gauge",
+        f"xiao_esp32_heap {tele.get('heap', 0)}",
+        "# HELP xiao_esp32_uptime ESP32 uptime in seconds",
+        "# TYPE xiao_esp32_uptime gauge",
+        f"xiao_esp32_uptime {tele.get('uptime', 0)}",
+        "# HELP xiao_camera_fps Camera capture FPS",
+        "# TYPE xiao_camera_fps gauge",
+        f"xiao_camera_fps {getattr(camera, 'capture_fps', 0)}",
+        "# HELP xiao_python_threads Active Python threads",
+        "# TYPE xiao_python_threads gauge",
+        f"xiao_python_threads {threading.active_count()}",
+        "# HELP xiao_memory_rss Process memory RSS",
+        "# TYPE xiao_memory_rss gauge",
+    ]
+    try:
+        import psutil
+        proc = psutil.Process(ps)
+        lines.append(f"xiao_memory_rss {proc.memory_info().rss}")
+    except ImportError:
+        lines.append("xiao_memory_rss 0")
+    return Response(content="\n".join(lines), media_type="text/plain; charset=utf-8")
 
 
 # ─── Version & Info ──────────────────────────
