@@ -18,7 +18,11 @@ log = logging.getLogger("raw_view")
 
 parser = argparse.ArgumentParser(description="ESP32-S3 Camera Viewer")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
+parser.add_argument("--format", type=str, default="avi", choices=["avi", "mp4"], help="Recording format (avi or mp4)")
+parser.add_argument("--multi-ip", type=str, default=None, nargs="+", help="Multiple ESP32 IPs for multi-camera view")
 args, _ = parser.parse_known_args()
+RECORDING_FORMAT = args.format
+MULTI_IPS = args.multi_ip
 
 def _auto_discover() -> str:
     """Auto-discover ESP32 IP via mDNS or network scan."""
@@ -224,12 +228,22 @@ class Recorder:
     def start(self, frame: np.ndarray):
         if self.recording:
             return
+        ext = RECORDING_FORMAT
+        codec = "XVID" if ext == "avi" else "avc1"
+        if ext == "mp4":
+            try:
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                test = cv2.VideoWriter()
+                if not test.isOpened():
+                    codec = "mp4v"
+            except Exception:
+                codec = "mp4v"
         self.filename = os.path.join(
             self.output_dir,
-            f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avi",
+            f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}",
         )
         h, w = frame.shape[:2]
-        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        fourcc = cv2.VideoWriter_fourcc(*codec)
         self.writer = cv2.VideoWriter(self.filename, fourcc, 20.0, (w, h))
         self.recording = True
         print(f"Recording started: {self.filename}")
@@ -438,6 +452,11 @@ class Viewer:
         self.show_timestamp = False
         self.recording_start_time = 0
         self.frame_dims = (0, 0)
+        self.roi_region = None
+        self.selecting_roi = False
+        self.roi_start = None
+        self.roi_end = None
+        self.show_roi = False
 
         # Threading synchronization variables
         self.latest_frame = None
@@ -479,6 +498,13 @@ class Viewer:
         if self.show_timestamp:
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             ModernHUD.text_sm(frame, ts, frame.shape[1] - 160, 28, (180, 180, 180), 0.4, 1)
+
+        if self.roi_region:
+            x, y, w, h = self.roi_region
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
+            cv2.putText(frame, "ROI", (x, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+        elif self.roi_start and self.roi_end:
+            cv2.rectangle(frame, self.roi_start, self.roi_end, (255, 255, 0), 2)
 
     def handle_keys(self, key: int):
         if key == ord("q"):
@@ -534,6 +560,20 @@ class Viewer:
         elif key == ord("T"):
             self.show_timestamp = not self.show_timestamp
             print(f"Timestamp: {'ON' if self.show_timestamp else 'OFF'}")
+        elif key == ord("i"):
+            self.show_roi = not self.show_roi
+            self.selecting_roi = self.show_roi
+            if not self.show_roi:
+                self.roi_region = None
+                self.roi_start = None
+                self.roi_end = None
+            print(f"ROI selection: {'ON' if self.show_roi else 'OFF'}")
+        elif key == ord("x"):
+            if self.roi_region:
+                self.roi_region = None
+                self.roi_start = None
+                self.roi_end = None
+                print("ROI cleared")
 
     def _capture_loop(self):
         """Background thread dedicated entirely to network streaming.
@@ -596,6 +636,26 @@ class Viewer:
         """Main UI Thread: Handles rendering, AI, and OpenCV events."""
         self.capture_thread.start()
         print("UI Thread initialized. Press 'h' for help.\n")
+
+        def _mouse_callback(event, x, y, flags, param):
+            if not self.show_roi:
+                return
+            if event == cv2.EVENT_LBUTTONDOWN:
+                self.roi_start = (x, y)
+                self.roi_end = (x, y)
+            elif event == cv2.EVENT_MOUSEMOVE and self.roi_start:
+                self.roi_end = (x, y)
+            elif event == cv2.EVENT_LBUTTONUP and self.roi_start:
+                x1, y1 = self.roi_start
+                x2, y2 = x, y
+                rx, ry = min(x1, x2), min(y1, y2)
+                rw, rh = abs(x2 - x1), abs(y2 - y1)
+                if rw > 10 and rh > 10:
+                    self.roi_region = (rx, ry, rw, rh)
+                    print(f"ROI set: ({rx},{ry}) {rw}x{rh}")
+                self.roi_start = None
+                self.roi_end = None
+                self.selecting_roi = False
 
         stream_recording = False
 
@@ -667,6 +727,7 @@ class Viewer:
                 stream_recording = False
 
             title = f"ESP32-S3 Camera Viewer — {w}x{h}"
+            cv2.setMouseCallback(title, _mouse_callback)
             cv2.imshow(title, frame)
 
             key = cv2.waitKey(1) & 0xFF
@@ -710,7 +771,91 @@ def print_help():
 """)
 
 
+class MultiCameraViewer:
+    """View multiple ESP32 camera streams simultaneously in a grid layout."""
+
+    def __init__(self, urls: list[str]):
+        self.urls = urls
+        self.clients = [ESP32Client(url) for url in urls]
+        self.buffers = [StreamBuffer() for _ in urls]
+        self.analyzers = [FrameAnalyzer() for _ in urls]
+        self.fps_counters = [FPSCounter() for _ in urls]
+        self.latest_frames: list[np.ndarray | None] = [None] * len(urls)
+        self.frame_flags = [False] * len(urls)
+        self.locks = [threading.Lock() for _ in urls]
+        self.running = True
+        self.threads = []
+
+    def _capture_loop(self, idx: int):
+        url = self.urls[idx]
+        buf = self.buffers[idx]
+        while self.running:
+            try:
+                stream = urllib.request.urlopen(url + "/", timeout=3)
+                while self.running:
+                    data = stream.read(65536)
+                    if not data:
+                        break
+                    buf.feed(data)
+                    frame = buf.get_frame()
+                    if frame is not None:
+                        with self.locks[idx]:
+                            self.latest_frames[idx] = frame
+                            self.frame_flags[idx] = True
+            except Exception:
+                pass
+            time.sleep(1)
+
+    def run(self):
+        for i in range(len(self.urls)):
+            t = threading.Thread(target=self._capture_loop, args=(i,), daemon=True)
+            t.start()
+            self.threads.append(t)
+        print(f"Multi-camera: viewing {len(self.urls)} streams")
+        while self.running:
+            frames = []
+            for i in range(len(self.urls)):
+                with self.locks[i]:
+                    if self.frame_flags[i] and self.latest_frames[i] is not None:
+                        frames.append(self.latest_frames[i].copy())
+                        self.frame_flags[i] = False
+                    else:
+                        frames.append(None)
+            valid = [f for f in frames if f is not None]
+            if not valid:
+                cv2.waitKey(50)
+                continue
+            n = len(self.urls)
+            cols = min(3, n)
+            rows = (n + cols - 1) // cols
+            display_h, display_w = 480, 640
+            grid_h, grid_w = display_h * rows, display_w * cols
+            grid = np.zeros((grid_h, grid_w, 3), dtype=np.uint8)
+            for i, frame in enumerate(frames):
+                if frame is None:
+                    continue
+                r, c = divmod(i, cols)
+                h, w = frame.shape[:2]
+                scale = min(display_w / w, display_h / h)
+                new_w, new_h = int(w * scale), int(h * scale)
+                resized = cv2.resize(frame, (new_w, new_h))
+                y_off, x_off = r * display_h, c * display_w
+                grid[y_off:y_off + new_h, x_off:x_off + new_w] = resized
+                cv2.putText(grid, f"Cam {i+1}", (x_off + 8, y_off + 24),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.imshow("ESP32-S3 Multi-Camera View", grid)
+            key = cv2.waitKey(30) & 0xFF
+            if key == ord("q"):
+                self.running = False
+        cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
-    print_help()
-    viewer = Viewer()
-    viewer.run()
+    if MULTI_IPS:
+        urls = [ip.rstrip("/") for ip in MULTI_IPS]
+        viewer = MultiCameraViewer(urls)
+        viewer.run()
+    else:
+        print_help()
+        viewer = Viewer()
+        viewer.run()

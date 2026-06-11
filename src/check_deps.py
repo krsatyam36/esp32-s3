@@ -26,6 +26,8 @@ REQUIRED_SYSTEM = [
     ("espeak", "Boss Mode TTS"),
 ]
 
+HEADLESS_WARNING = False
+
 REQUIRED_FILES = [
     "src/config.py",
     "src/config.h",
@@ -76,12 +78,28 @@ def main():
             all_ok = False
     if all_ok:
         print("  All required packages installed.")
+    try:
+        import cv2
+        try:
+            cv2.namedWindow("test", cv2.WINDOW_NORMAL)
+            cv2.destroyWindow("test")
+            print("  [OK] OpenCV GUI (window support available)")
+        except cv2.error:
+            print("  [--] OpenCV GUI unavailable (headless environment)")
+            HEADLESS_WARNING = True
+    except ImportError:
+        pass
 
     print("\n[3/5] Optional Python Dependencies")
     for name, purpose in OPTIONAL_PYTHON:
         ok, _ = check_python(name)
         status = "[OK]" if ok else "[--]"
         print(f"  {status} {name} ({purpose})")
+
+    # Docker environment check
+    is_docker = Path("/.dockerenv").exists() or Path("/proc/1/cgroup").read_text().find("docker") != -1 if Path("/proc/1/cgroup").exists() else False
+    if is_docker:
+        print("  [INFO] Running inside Docker container")
 
     # System deps
     print("\n[4/5] System Dependencies")
