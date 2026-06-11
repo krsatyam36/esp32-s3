@@ -189,11 +189,16 @@ async def add_api_headers(request: Request, call_next):
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
     request_id = str(uuid.uuid4())[:8]
+    request.state.request_id = request_id
     start = time.time()
     response = await call_next(request)
     elapsed = time.time() - start
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Response-Time"] = f"{elapsed * 1000:.0f}ms"
+    if elapsed > 1.0:
+        log.warning("Slow request: %s %s (%.2fs)", request.method, request.url.path, elapsed)
+    else:
+        log.info("%s %s -> %d (%.0fms)", request.method, request.url.path, response.status_code, elapsed * 1000)
     return response
 
 
