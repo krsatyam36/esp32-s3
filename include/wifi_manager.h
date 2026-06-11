@@ -10,6 +10,10 @@
 static unsigned long last_wifi_check = 0;
 static const unsigned long WIFI_CHECK_INTERVAL = 10000;
 
+#ifndef WIFI_MAX_ATTEMPTS
+#define WIFI_MAX_ATTEMPTS 40
+#endif
+
 void connectWiFi() {
     Serial.printf("Connecting to WiFi: %s\n", ssid);
     WiFi.mode(WIFI_STA);
@@ -17,7 +21,8 @@ void connectWiFi() {
     WiFi.begin(ssid, password);
 
     int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 40) {
+    int max_attempts = WIFI_MAX_ATTEMPTS;
+    while (WiFi.status() != WL_CONNECTED && attempts < max_attempts) {
         delay(500);
         Serial.print(".");
         attempts++;

@@ -96,6 +96,22 @@ bool setResolution(framesize_t size) {
     return false;
 }
 
+bool setSpecialEffect(int effect) {
+    sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) return false;
+    effect = constrain(effect, 0, 6);
+    int ret = s->set_special_effect(s, effect);
+    return (ret == 0);
+}
+
+bool setWhiteBalance(int mode) {
+    sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) return false;
+    mode = constrain(mode, 0, 4);
+    int ret = s->set_wb_mode(s, mode);
+    return (ret == 0);
+}
+
 const char* resolutionToString(framesize_t fs) {
     switch (fs) {
         case FRAMESIZE_QQVGA: return "QQVGA";
