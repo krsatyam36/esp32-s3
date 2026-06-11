@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import threading
 import time
 import typing
@@ -10,6 +11,8 @@ import numpy as np
 if typing.TYPE_CHECKING:
     from src.core.camera_capture import CameraCapture
 
+HEATMAP_FILE = os.environ.get("HEATMAP_FILE", "")
+
 
 class MotionHeatmap:
     def __init__(self, camera: CameraCapture, decay: float = 0.95) -> None:
@@ -19,6 +22,12 @@ class MotionHeatmap:
         self._lock = threading.Lock()
         self._running = False
         self._prev_gray: np.ndarray | None = None
+        if HEATMAP_FILE and os.path.isfile(HEATMAP_FILE):
+            try:
+                loaded = np.load(HEATMAP_FILE)
+                self._heatmap = loaded.astype(np.float32)
+            except Exception:
+                pass
 
     def start(self) -> None:
         self._running = True
@@ -29,6 +38,7 @@ class MotionHeatmap:
         self._running = False
 
     def _loop(self) -> None:
+        last_persist = 0.0
         while self._running:
             raw = self.camera.latest_frame
             if raw is not None:
@@ -59,6 +69,10 @@ class MotionHeatmap:
                         self._prev_gray = gray
                 except Exception:
                     pass
+            now = time.time()
+            if HEATMAP_FILE and (now - last_persist) > 30:
+                self._maybe_persist()
+                last_persist = now
             time.sleep(0.5)
 
     def get_heatmap(self) -> str | None:
@@ -74,7 +88,18 @@ class MotionHeatmap:
 
             return _b64.b64encode(buffer).decode("utf-8")
 
+    def _maybe_persist(self) -> None:
+        if not HEATMAP_FILE:
+            return
+        try:
+            with self._lock:
+                if self._heatmap is not None:
+                    np.save(HEATMAP_FILE, self._heatmap)
+        except Exception:
+            pass
+
     def reset(self) -> None:
         with self._lock:
             self._heatmap = None
             self._prev_gray = None
+        self._maybe_persist()
