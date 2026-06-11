@@ -1,5 +1,6 @@
 """Utility endpoints for the Edge Intelligence Platform."""
 
+import importlib
 import os
 import platform
 import time
@@ -35,6 +36,28 @@ async def system_info():
         "pid": os.getpid(),
         "cwd": os.getcwd(),
     }
+
+
+@router.get("/dependencies")
+async def dependencies():
+    deps = {
+        "cv2": {"status": False, "version": None},
+        "numpy": {"status": False, "version": None},
+        "requests": {"status": False, "version": None},
+        "fastapi": {"status": False, "version": None},
+        "uvicorn": {"status": False, "version": None},
+        "ultralytics": {"status": False, "version": None, "optional": True},
+        "chromadb": {"status": False, "version": None, "optional": True},
+        "torch": {"status": False, "version": None, "optional": True},
+    }
+    for name, info in deps.items():
+        try:
+            mod = importlib.import_module(name)
+            info["status"] = True
+            info["version"] = getattr(mod, "__version__", "unknown")
+        except ImportError:
+            pass
+    return {"dependencies": deps}
 
 
 @router.get("/disk")
