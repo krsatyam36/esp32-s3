@@ -241,11 +241,13 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
     float temp = temperatureRead();
     uint32_t total_psram = ESP.getPsramSize();
 
+    int wifi_quality = map(constrain(rssi, -100, -50), -100, -50, 0, 100);
     snprintf(json, sizeof(json),
         "{"
         "\"heap\":%lu,"
         "\"uptime\":%lu,"
         "\"rssi\":%d,"
+        "\"wifi_quality\":%d,"
         "\"resolution\":\"%s\","
         "\"free_psram\":%lu,"
         "\"total_psram\":%lu,"
@@ -256,7 +258,7 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
         "\"camera_init_attempts\":%d,"
         "\"framesize\":%d"
         "}",
-        heap, uptime_sec, rssi, resolutionToString(current_resolution),
+        heap, uptime_sec, rssi, wifi_quality, resolutionToString(current_resolution),
         psram, total_psram, temp,
         WiFi.localIP().toString().c_str(),
         String((uint32_t)ESP.getEfuseMac(), HEX).c_str(),
