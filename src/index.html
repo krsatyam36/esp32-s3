@@ -132,6 +132,7 @@
       <span id="modeDisplay" class="font-semibold text-slate-400 text-[11px]">normal</span>
       <span class="w-px h-4 bg-white/10"></span>
       <span id="fpsDisplay" class="font-mono text-slate-400 text-[11px]">0 FPS</span>
+      <span id="qualityDot" class="status-dot na" title="Stream quality"></span>
       <span class="w-px h-4 bg-white/10"></span>
       <span id="connStatus" class="flex items-center gap-1.5"><span class="status-dot na"></span><span class="text-slate-500">Connecting...</span></span>
       <span class="w-px h-4 bg-white/10"></span>
@@ -585,6 +586,12 @@ async function fetchSystemStatus() {
     $('modeDisplay').textContent = a.mode;
     $('modeDisplay').className = 'font-semibold mode-' + a.mode + ' text-[11px]';
     $('fpsDisplay').textContent = (d.camera?.capture_fps || 0) + ' FPS';
+    const fps = d.camera?.capture_fps || 0;
+    const rssi = d.adaptive?.rssi || 0;
+    const qDot = $('qualityDot');
+    if (fps > 15 && rssi > -60) { qDot.className = 'status-dot on'; qDot.title = 'Excellent quality'; }
+    else if (fps > 8 && rssi > -75) { qDot.className = 'status-dot'; qDot.style.background = '#f59e0b'; qDot.title = 'Fair quality'; }
+    else { qDot.className = 'status-dot off'; qDot.title = 'Poor quality'; }
     $('statsDetections').textContent = d.gatekeeper?.detections || 0;
     $('statsClasses').textContent = d.metrics?.points || 0;
   } catch(e) {}
