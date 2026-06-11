@@ -727,6 +727,14 @@ async def api_config():
     }
 
 
+@app.get("/api/env")
+async def api_env():
+    relevant = {k: v for k, v in os.environ.items() if any(
+        x in k.upper() for x in ["ESP32", "OLLAMA", "YOLO", "PORT", "LOG", "CORS", "RATE", "SHUTDOWN"]
+    )}
+    return {"env": relevant, "python": sys.version.split()[0]}
+
+
 @app.post("/api/restart")
 async def api_restart():
     async def delayed_restart():
