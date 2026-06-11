@@ -1,6 +1,6 @@
 [project]
 name = "xiao-esp32s3-edge"
-version = "2.2.0"
+version = "2.3.0"
 description = "ESP32-S3 Edge Intelligence Platform — streaming, Vision LLM, semantic search, YOLO, AI features"
 authors = [{name = "krsatyam36"}]
 license = {text = "MIT"}

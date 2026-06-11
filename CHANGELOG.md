@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.3.0 (2026-06-11)
+
+### Added
+- Firmware: /brightness, /contrast, /quality, /framesize endpoints for sensor control
+- Firmware: X-Content-Type-Options and X-Frame-Options security headers
+- Firmware: CORS support with OPTIONS handler and Access-Control headers
+- Firmware: setSpecialEffect() and setWhiteBalance() camera configuration
+- Firmware: configurable WiFi connection attempts (WIFI_MAX_ATTEMPTS)
+- Firmware: NTP time synchronization with LED status patterns
+- Viewer: MP4 recording format option (--format mp4)
+- Viewer: ROI selection region for motion detection
+- Viewer: Multi-camera grid view (--multi-ip)
+- Vision LLM: streaming responses from Ollama (--stream)
+- Vision LLM: JSON output mode for analysis results (--output-json)
+- stream_test: latency measurement per endpoint with --json output
+- check_deps: OpenCV GUI availability and Docker environment checks
+- api_utils: /api/dependencies endpoint for runtime dependency inspection
+- Server: Prometheus /metrics endpoint for production monitoring
+- Server: WebSocket /ws endpoint for real-time frame streaming
+- Server: /api/alerts/clear endpoint to clear alert history
+- Server: Request body size limiting middleware (MAX_BODY_SIZE env)
+- Server: Configurable LOG_FORMAT env var (json/plain)
+- Tests: 8 new test files for CORS, config, discovery, utilities, heatmap, timeline, counter, stream integration
+- Infra: Makefile targets (coverage-html, docker-buildx, pre-commit-all, security-scan)
+- Infra: Multi-stage Docker build with non-root user
+- Infra: platformio.ini debug variant, lib_deps pinning, OTA partitions
+- Infra: Python 3.10/3.11/3.12 CI matrix with mypy typecheck job
+- Infra: dependabot.yml for automated dependency updates
+- Infra: CodeQL security analysis workflow
+- Config: .env.example extended with OLLAMA_TIMEOUT, feature flags, and all env vars
+- Config: config.example.h with firmware override options
+- Config: config.example.py with all configurable parameters
+- Docs: Expanded CONTRIBUTING guide with setup, testing, code review checklist
+- Docs: CODEOWNERS, SUPPORT.md, .yamllint configuration files
+
 ## v2.2.0 (2026-06-11)
 
 ### Added
