@@ -95,6 +95,7 @@
     .toggle-switch::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform 0.25s; }
     .toggle-switch.active::after { transform:translateX(16px); }
     .alert-rule-card { background:rgba(0,0,0,0.25); border-radius:10px; padding:12px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.05); }
+    .notif-badge { position:absolute; top:-4px; right:-4px; min-width:16px; height:16px; padding:0 4px; border-radius:8px; background:#ef4444; color:#fff; font-size:9px; font-weight:700; display:flex; align-items:center; justify-content:center; box-shadow:0 0 8px rgba(239,68,68,0.5); }
     .timeline-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:4px; }
     .heatmap-wrapper { position:relative; background:#000; border-radius:12px; overflow:hidden; aspect-ratio:4/3; }
     @media (max-width:1024px) { .nav-tab { padding:8px 12px; font-size:12px; } }
@@ -136,7 +137,7 @@
     <div id="toastContainer" class="toast toast-enter"></div>
   <div class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">&#x1F4FA; Dashboard</div>
     <div class="nav-tab" data-tab="analytics" onclick="switchTab('analytics')">&#x1F4CA; Analytics</div>
-    <div class="nav-tab" data-tab="events" onclick="switchTab('events')">&#x1F4CB; Events</div>
+    <div class="nav-tab relative" data-tab="events" onclick="switchTab('events')">&#x1F4CB; Events <span id="eventNotifBadge" class="notif-badge hidden">0</span></div>
     <div class="nav-tab" data-tab="alerts" onclick="switchTab('alerts')">&#x1F514; Alerts</div>
     <div class="nav-tab" data-tab="heatmap" onclick="switchTab('heatmap')">&#x1F3A8; Heatmap</div>
   </div>
@@ -758,6 +759,15 @@ async function fetchTimeline() {
 setInterval(fetchTimeline, 4000); fetchTimeline();
 
 // ── Events ──
+let _lastEventCount = 0;
+let _eventTabViewed = true;
+document.querySelector('[data-tab="events"]')?.addEventListener('click', () => {
+  _eventTabViewed = true;
+  document.getElementById('eventNotifBadge').classList.add('hidden');
+});
+document.querySelectorAll('.nav-tab:not([data-tab="events"])').forEach(t => {
+  t.addEventListener('click', () => { _eventTabViewed = false; });
+});
 async function fetchEvents() {
   try {
     const r = await fetch('/events?limit=30');
@@ -770,6 +780,12 @@ async function fetchEvents() {
       el.innerHTML = '<div class="text-slate-600 text-center py-4 text-xs">No events yet</div>';
       ec.textContent = '0';
     } else {
+      if (!_eventTabViewed && events.length > _lastEventCount) {
+        const badge = document.getElementById('eventNotifBadge');
+        badge.textContent = events.length - _lastEventCount;
+        badge.classList.remove('hidden');
+      }
+      _lastEventCount = events.length;
       ec.textContent = events.length;
       el.innerHTML = events.slice(-10).reverse().map(e => {
         const objs = e.objects.map(o => o.class).join(', ');
