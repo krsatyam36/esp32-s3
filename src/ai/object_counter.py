@@ -42,6 +42,13 @@ class ObjectCounter:
                 "top_classes": dict(sorted(self._counts.items(), key=lambda x: -x[1])[:10]),
             }
 
+    def reset(self) -> None:
+        with self._lock:
+            self._counts.clear()
+            self._per_frame.clear()
+            self._total_detections = 0
+            self._total_frames_with_objects = 0
+
     @property
     def recent_frames(self) -> list[dict[str, object]]:
         with self._lock:
