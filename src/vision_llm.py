@@ -26,7 +26,11 @@ log = logging.getLogger("vision_llm")
 
 parser = argparse.ArgumentParser(description="ESP32-S3 Vision LLM")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
+parser.add_argument("--stream", action="store_true", help="Enable streaming responses from Ollama")
+parser.add_argument("--output-json", type=str, default=None, help="Save analysis results as JSON to file")
 args, _ = parser.parse_known_args()
+STREAM_LLM = args.stream
+OUTPUT_JSON = args.output_json
 
 def _auto_discover() -> str:
     from discover_esp32 import discover
@@ -111,18 +115,35 @@ class OllamaVisionClient:
                 "system": SYSTEM_PROMPT,
                 "prompt": USER_PROMPT,
                 "images": [b64],
-                "stream": False,
+                "stream": STREAM_LLM,
             }
-            resp = self.session.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=60)
-            if resp.status_code == 200:
-                data = resp.json()
-                with self.lock:
-                    # /api/generate returns the full text under the "response" key
-                    self.last_response = data.get("response", "").strip()
-                    self.last_error = ""
+            if STREAM_LLM:
+                resp = self.session.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=120, stream=True)
+                collected = ""
+                if resp.status_code == 200:
+                    for line in resp.iter_lines(decode_unicode=True):
+                        if line:
+                            try:
+                                chunk = json.loads(line)
+                                collected += chunk.get("response", "")
+                                with self.lock:
+                                    self.last_response = collected.strip()
+                                    self.last_error = ""
+                            except json.JSONDecodeError:
+                                pass
+                else:
+                    with self.lock:
+                        self.last_error = f"HTTP {resp.status_code}"
             else:
-                with self.lock:
-                    self.last_error = f"HTTP {resp.status_code}"
+                resp = self.session.post(f"{OLLAMA_URL}/api/generate", json=payload, timeout=60)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    with self.lock:
+                        self.last_response = data.get("response", "").strip()
+                        self.last_error = ""
+                else:
+                    with self.lock:
+                        self.last_error = f"HTTP {resp.status_code}"
         except Exception as e:
             with self.lock:
                 self.last_error = str(e)
@@ -432,7 +453,18 @@ def main():
                         print(f"Auto-analysis: {'ON' if auto_analyze else 'OFF'}")
                         if auto_analyze:
                             last_analysis = 0
-                    elif key == ord("n"):
+                    if analysis_result and OUTPUT_JSON:
+                    try:
+                        with open(OUTPUT_JSON, "w") as jf:
+                            json.dump({
+                                "timestamp": time.time(),
+                                "model": model,
+                                "result": analysis_result,
+                            }, jf)
+                    except Exception:
+                        pass
+
+                elif key == ord("n"):
                         if not ollama.processing:
                             ollama.ask(frame)
                             last_analysis = now
