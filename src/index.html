@@ -137,6 +137,7 @@
       <span id="connStatus" class="flex items-center gap-1.5"><span class="status-dot na"></span><span class="text-slate-500">Connecting...</span></span>
       <span class="w-px h-4 bg-white/10"></span>
       <button id="themeToggle" class="cta bg-slate-700/50 text-white hover:bg-slate-600 cta-sm" onclick="toggleTheme()">&#9790; Theme</button>
+    <button id="pauseBtn" class="cta bg-slate-700/50 text-white hover:bg-slate-600 cta-sm" onclick="togglePause()">&#9646;&#9646; Pause</button>
     </div>
   </header>
 
@@ -909,6 +910,29 @@ async function resetHeatmap() {
 
 // ── Keyboard ──
 function toggleHelp() { document.getElementById('helpOverlay').classList.toggle('hidden'); }
+
+// ── Pause/Resume ──
+let _paused = false;
+const _intervals = [];
+const _origSetInt = window.setInterval;
+window.setInterval = function(fn, ms) {
+  const id = _origSetInt(fn, ms);
+  _intervals.push(id);
+  return id;
+};
+function togglePause() {
+  _paused = !_paused;
+  const btn = $('pauseBtn');
+  if (_paused) {
+    _intervals.forEach(id => clearInterval(id));
+    _intervals.length = 0;
+    btn.innerHTML = '&#9654; Resume';
+    btn.classList.add('bg-amber-600/60');
+    showToast('Updates paused', 'info');
+  } else {
+    location.reload();
+  }
+}
 
 // ── CSV Export ──
 async function exportMetricsCSV() {
