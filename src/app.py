@@ -34,7 +34,7 @@ import uuid
 import cv2
 import numpy as np
 import requests
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
@@ -306,6 +306,20 @@ async def video_stream():
 
 
 # ─── SSE Analysis Stream ──────────────────────
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            frame = camera.latest_frame
+            if frame is not None:
+                b64 = base64.b64encode(frame).decode()
+                await websocket.send_json({"type": "frame", "data": b64, "size": len(frame)})
+            await asyncio.sleep(0.1)
+    except WebSocketDisconnect:
+        pass
 
 
 @app.get("/analysis")
