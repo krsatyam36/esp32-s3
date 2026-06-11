@@ -497,6 +497,12 @@ async def get_timeline(limit: int = Query(50), since: float = Query(0)):
     }
 
 
+@app.post("/timeline/export")
+async def export_timeline():
+    entries = timeline.get_timeline(limit=500)
+    return JSONResponse(content={"entries": entries, "count": len(entries)})
+
+
 # ─── Feature 6: Object Counting ──────────────
 
 
