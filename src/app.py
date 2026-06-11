@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.0.0 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.0 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -143,7 +143,7 @@ _start_time = time.time()
 app = FastAPI(
     title="ESP32-S3 Edge Intelligence Platform",
     description="Streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive controller, scene classification, activity timeline, object counting, smart alerts, heatmap",
-    version="2.0.0",
+    version="2.3.0",
 )
 
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "*").split(",")
@@ -193,7 +193,7 @@ async def body_size_limit(request: Request, call_next):
     return await call_next(request)
 
 
-_API_VERSION = "2.1.0"
+_API_VERSION = "2.3.0"
 
 
 @app.middleware("http")
@@ -738,7 +738,7 @@ async def prometheus_metrics():
 @app.get("/api/version")
 async def api_version():
     return {
-        "version": "2.0.0",
+        "version": "2.3.0",
         "name": "ESP32-S3 Edge Intelligence Platform",
         "python": sys.version.split()[0],
         "platform": platform.platform(),
