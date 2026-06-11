@@ -405,6 +405,7 @@
   <footer class="mt-5 text-center text-[11px] text-slate-700">
     ESP32-S3 Edge Intelligence Platform v2.0.0 &middot; 
     <span class="text-slate-600">Scene: <span id="footerScene" class="text-sky-600">--</span></span>
+    &middot; <span id="footerFeatures" class="text-slate-600"></span>
     &middot; <span class="cursor-pointer text-slate-600 hover:text-slate-400" onclick="toggleHelp()">[?] Help</span>
   </footer>
   <div id="helpOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 hidden" onclick="toggleHelp()">
@@ -1002,6 +1003,22 @@ document.addEventListener('keydown', e => {
   if (e.key === 'L' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); flashLed(); }
   if (e.key === '?' || (e.key === '/' && e.shiftKey)) { e.preventDefault(); toggleHelp(); }
 });
+
+// ── Feature Badges ──
+async function updateFeatureBadges() {
+  try {
+    const r = await fetch('/system-status');
+    const d = await r.json();
+    const badges = [];
+    if (d.gatekeeper?.detections !== undefined) badges.push('YOLO');
+    if (d.vector_search?.ready) badges.push('Semantic');
+    if (d.scene?.current) badges.push('Scene');
+    if (d.adaptive?.mode) badges.push('Adaptive');
+    $('footerFeatures').textContent = badges.length ? badges.join(' \u00B7 ') : '';
+  } catch(e) {}
+}
+setInterval(updateFeatureBadges, 10000);
+updateFeatureBadges();
 
 // ── Init Charts after DOM ──
 document.addEventListener('DOMContentLoaded', initCharts);
