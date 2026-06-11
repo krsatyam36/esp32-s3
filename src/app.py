@@ -19,6 +19,7 @@ import asyncio
 import base64
 import collections
 import json
+import logging
 import os
 import platform
 import signal
@@ -37,6 +38,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
+
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format='{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","msg":"%(message)s"}',
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+log = logging.getLogger("xiao")
 
 _dotenv = os.path.join(os.path.dirname(__file__), "..", ".env")
 if os.path.isfile(_dotenv):
@@ -187,8 +196,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.on_event("startup")
 async def startup():
-    print(f"[startup] ESP32: {BASE_URL}")
-    print(f"[startup] Ollama: {OLLAMA_URL} ({OLLAMA_MODEL})")
+    log.info("Starting ESP32: %s", BASE_URL)
+    log.info("Ollama: %s (%s)", OLLAMA_URL, OLLAMA_MODEL)
     camera.start()
     analyzer.start()
     vector_search.start()
@@ -197,12 +206,12 @@ async def startup():
     scene_classifier.start()
     heatmap.start()
     if vector_search.ready:
-        print("[startup] Vector search ready")
+        log.info("Vector search ready")
     if gatekeeper.ready:
-        print("[startup] YOLO gatekeeper ready")
-    print("[startup] Scene classifier active")
-    print("[startup] Motion heatmap active")
-    print("[startup] Dashboard at http://localhost:8000")
+        log.info("YOLO gatekeeper ready")
+    log.info("Scene classifier active")
+    log.info("Motion heatmap active")
+    log.info("Dashboard at http://localhost:8000")
 
 
 @app.on_event("shutdown")
@@ -727,7 +736,7 @@ async def index():
 
 
 def _signal_handler(sig, frame):
-    print(f"\n[shutdown] Signal {sig} received, stopping...")
+    log.warning("Signal %s received, stopping...", sig)
     camera.stop()
     analyzer.stop()
     vector_search.stop()
