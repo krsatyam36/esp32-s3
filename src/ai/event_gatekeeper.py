@@ -19,6 +19,7 @@ if typing.TYPE_CHECKING:
 
 
 YOLO_CONF = float(os.environ.get("YOLO_CONFIDENCE", "0.35"))
+YOLO_SKIP = int(os.environ.get("YOLO_FRAME_SKIP", "0"))
 
 TARGET_CLASSES: dict[int, str] = {
     0: "person",
@@ -90,6 +91,7 @@ class EventGatekeeper:
     def _loop(self) -> None:
         last_id: int = -1
         last_llm_trigger: float = 0.0
+        _frame_counter = 0
         while self._running:
             fid = self.camera.frame_id
             raw = self.camera.latest_frame
@@ -97,6 +99,9 @@ class EventGatekeeper:
                 time.sleep(0.05)
                 continue
             last_id = fid
+            _frame_counter += 1
+            if YOLO_SKIP > 0 and (_frame_counter % (YOLO_SKIP + 1)) != 0:
+                continue
             try:
                 arr = np.frombuffer(raw, dtype=np.uint8)
                 img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
