@@ -20,6 +20,10 @@ class CameraCapture:
         self._frame_id = 0
         self._frame_timestamps: deque[float] = deque(maxlen=120)
         self._capture_start = 0.0
+        self._reconnects = 0
+        self._total_errors = 0
+        self._last_error_time = 0.0
+        self._last_error_msg = ""
 
     def start(self) -> None:
         self._running = True
@@ -57,6 +61,17 @@ class CameraCapture:
     def uptime(self) -> float:
         return time.time() - self._capture_start if self._capture_start else 0.0
 
+    @property
+    def stats(self) -> dict:
+        return {
+            "reconnects": self._reconnects,
+            "total_errors": self._total_errors,
+            "last_error": self._last_error_msg,
+            "last_error_time": round(self._last_error_time, 1) if self._last_error_time else 0,
+            "buffer_size": self._buffer.buffer_size,
+            "discarded_bytes": self._buffer.bytes_discarded,
+        }
+
     def _capture_loop(self) -> None:
         while self._running:
             stream = None
@@ -86,12 +101,15 @@ class CameraCapture:
                         break
                     except Exception:
                         break
-            except Exception:
-                pass
+            except Exception as e:
+                self._total_errors += 1
+                self._last_error_time = time.time()
+                self._last_error_msg = str(e)
             finally:
                 if stream is not None:
                     try:
                         stream.close()
                     except Exception:
                         pass
+            self._reconnects += 1
             time.sleep(2)
