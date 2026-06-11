@@ -31,6 +31,9 @@ class ESP32Client:
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url
         self._last_request_time: float = 0.0
+        self._telemetry_cache: dict = {}
+        self._cache_time: float = 0.0
+        self._cache_ttl: float = 2.0
 
     def send_command(self, endpoint: str, retries: int = MAX_RETRIES) -> dict:
         last_error = ""
@@ -48,4 +51,11 @@ class ESP32Client:
         return {"success": False, "error": last_error}
 
     def get_telemetry(self) -> dict:
-        return self.send_command("/telemetry")
+        now = time.time()
+        if self._telemetry_cache and (now - self._cache_time) < self._cache_ttl:
+            return self._telemetry_cache
+        result = self.send_command("/telemetry")
+        if result.get("success", True):
+            self._telemetry_cache = result
+            self._cache_time = now
+        return result
