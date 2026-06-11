@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import collections
+import os
 import threading
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timezone, timedelta
 
 
 class TimelineEngine:
@@ -11,6 +12,8 @@ class TimelineEngine:
         self._entries: collections.deque[dict[str, object]] = collections.deque(maxlen=max_entries)
         self._active_events: dict[str, float] = {}
         self._lock = threading.Lock()
+        tz_offset = int(os.environ.get("TZ_OFFSET", "0"))
+        self._tz = timezone(timedelta(hours=tz_offset)) if tz_offset else UTC
 
     def record_event(self, event_type: str, metadata: dict[str, object] | None = None) -> None:
         with self._lock:
@@ -19,7 +22,7 @@ class TimelineEngine:
                 {
                     "type": event_type,
                     "time": now,
-                    "timestamp": datetime.now(UTC).isoformat(),
+                    "timestamp": datetime.now(self._tz).isoformat(),
                     "metadata": metadata or {},
                 }
             )
