@@ -151,6 +151,7 @@
           <div class="stream-wrapper" id="streamWrapper">
             <img id="videoFeed" src="/stream" alt="Live stream" />
             <div class="live-badge"><span class="live-dot"></span><span class="text-green-400 text-xs font-semibold tracking-wide">LIVE</span></div>
+            <button id="fullscreenBtn" class="absolute top-3 right-3 z-10 bg-black/60 text-white border border-slate-600 px-2.5 py-1.5 rounded-md text-xs cursor-pointer hover:bg-sky-600 transition-all" onclick="toggleFullscreen()">&#x26F6; Fullscreen</button>
           </div>
         </div>
 
@@ -854,6 +855,16 @@ async function resetHeatmap() {
 
 // ── Keyboard ──
 function toggleHelp() { document.getElementById('helpOverlay').classList.toggle('hidden'); }
+
+// ── Fullscreen ──
+function toggleFullscreen() {
+  const el = document.getElementById('streamWrapper');
+  if (!document.fullscreenElement) {
+    el.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
 
 // ── Theme Toggle ──
 (function() {
