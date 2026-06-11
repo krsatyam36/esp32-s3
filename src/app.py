@@ -188,10 +188,35 @@ async def add_request_id(request: Request, call_next):
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    log.error("Unhandled error on %s: %s", request.url.path, exc)
+    status = 500
+    detail = str(exc)
+    if "timeout" in detail.lower():
+        status = 504
+    elif "not found" in detail.lower() or "404" in detail:
+        status = 404
+    elif "bad request" in detail.lower() or "400" in detail:
+        status = 400
     return JSONResponse(
-        status_code=500,
-        content={"error": str(exc), "path": str(request.url.path)},
+        status_code=status,
+        content={"error": detail, "path": str(request.url.path), "code": status},
         headers={"X-Request-ID": str(uuid.uuid4())[:8]},
+    )
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=404,
+        content={"error": "endpoint_not_found", "path": str(request.url.path)},
+    )
+
+
+@app.exception_handler(405)
+async def method_not_allowed_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=405,
+        content={"error": "method_not_allowed", "path": str(request.url.path)},
     )
 
 
