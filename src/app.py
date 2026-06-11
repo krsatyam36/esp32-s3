@@ -211,6 +211,8 @@ async def startup():
         log.info("YOLO gatekeeper ready")
     log.info("Scene classifier active")
     log.info("Motion heatmap active")
+    global _started
+    _started = True
     log.info("Dashboard at http://localhost:8000")
 
 
@@ -594,6 +596,32 @@ async def api_version():
             "/heatmap",
             "/dashboard-data",
         ],
+    }
+
+
+# ─── K8s-style Health Probes ─────────────────
+_started = False
+
+@app.get("/livez")
+async def livez():
+    """Liveness probe — always 200 if server is running."""
+    return {"status": "alive", "uptime": time.time() - _start_time}
+
+
+@app.get("/readyz")
+async def readyz():
+    """Readiness probe — 200 only when all subsystems are initialized."""
+    if not _started:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", "uptime": time.time() - _start_time},
+        )
+    esp_ok = esp32 is not None
+    cam_ok = camera is not None
+    return {
+        "status": "ready" if (esp_ok and cam_ok) else "degraded",
+        "esp32": esp_ok,
+        "camera": cam_ok,
     }
 
 
