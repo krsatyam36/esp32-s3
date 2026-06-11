@@ -273,6 +273,8 @@ static esp_err_t telemetry_handler(httpd_req_t *req) {
 
 static esp_err_t diag_handler(httpd_req_t *req) {
     char json[512];
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
     snprintf(json, sizeof(json),
         "{"
         "\"chip_model\":\"%s\","
@@ -288,7 +290,8 @@ static esp_err_t diag_handler(httpd_req_t *req) {
         "\"firmware_version\":\"%s\","
         "\"camera_init_attempts\":%d,"
         "\"uptime\":%lu,"
-        "\"wifi_rssi\":%d"
+        "\"wifi_rssi\":%d,"
+        "\"mac_address\":\"%02X:%02X:%02X:%02X:%02X:%02X\""
         "}",
         ESP.getChipModel(),
         ESP.getChipCores(),
@@ -303,7 +306,8 @@ static esp_err_t diag_handler(httpd_req_t *req) {
         FIRMWARE_VERSION,
         camera_init_attempts,
         millis() / 1000,
-        WiFi.RSSI());
+        WiFi.RSSI(),
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
