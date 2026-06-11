@@ -554,6 +554,21 @@ async def update_alert(idx: int, rule: AlertRuleCreate):
     return {"success": ok}
 
 
+class AlertToggle(BaseModel):
+    enabled: bool
+
+
+@app.patch("/alerts/{idx}")
+async def toggle_alert(idx: int, toggle: AlertToggle):
+    rules = alert_manager.get_rules()
+    if idx < 0 or idx >= len(rules):
+        return JSONResponse(status_code=404, content={"error": "rule not found"})
+    rule = rules[idx]
+    rule.enabled = toggle.enabled
+    ok = alert_manager.update_rule(idx, rule)
+    return {"success": ok, "enabled": toggle.enabled}
+
+
 @app.delete("/alerts/{idx}")
 async def delete_alert(idx: int):
     ok = alert_manager.remove_rule(idx)
