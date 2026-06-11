@@ -19,8 +19,10 @@ log = logging.getLogger("raw_view")
 parser = argparse.ArgumentParser(description="ESP32-S3 Camera Viewer")
 parser.add_argument("--ip", type=str, default=None, help="ESP32 IP address (overrides config.py)")
 parser.add_argument("--format", type=str, default="avi", choices=["avi", "mp4"], help="Recording format (avi or mp4)")
+parser.add_argument("--multi-ip", type=str, default=None, nargs="+", help="Multiple ESP32 IPs for multi-camera view")
 args, _ = parser.parse_known_args()
 RECORDING_FORMAT = args.format
+MULTI_IPS = args.multi_ip
 
 def _auto_discover() -> str:
     """Auto-discover ESP32 IP via mDNS or network scan."""
@@ -769,7 +771,91 @@ def print_help():
 """)
 
 
+class MultiCameraViewer:
+    """View multiple ESP32 camera streams simultaneously in a grid layout."""
+
+    def __init__(self, urls: list[str]):
+        self.urls = urls
+        self.clients = [ESP32Client(url) for url in urls]
+        self.buffers = [StreamBuffer() for _ in urls]
+        self.analyzers = [FrameAnalyzer() for _ in urls]
+        self.fps_counters = [FPSCounter() for _ in urls]
+        self.latest_frames: list[np.ndarray | None] = [None] * len(urls)
+        self.frame_flags = [False] * len(urls)
+        self.locks = [threading.Lock() for _ in urls]
+        self.running = True
+        self.threads = []
+
+    def _capture_loop(self, idx: int):
+        url = self.urls[idx]
+        buf = self.buffers[idx]
+        while self.running:
+            try:
+                stream = urllib.request.urlopen(url + "/", timeout=3)
+                while self.running:
+                    data = stream.read(65536)
+                    if not data:
+                        break
+                    buf.feed(data)
+                    frame = buf.get_frame()
+                    if frame is not None:
+                        with self.locks[idx]:
+                            self.latest_frames[idx] = frame
+                            self.frame_flags[idx] = True
+            except Exception:
+                pass
+            time.sleep(1)
+
+    def run(self):
+        for i in range(len(self.urls)):
+            t = threading.Thread(target=self._capture_loop, args=(i,), daemon=True)
+            t.start()
+            self.threads.append(t)
+        print(f"Multi-camera: viewing {len(self.urls)} streams")
+        while self.running:
+            frames = []
+            for i in range(len(self.urls)):
+                with self.locks[i]:
+                    if self.frame_flags[i] and self.latest_frames[i] is not None:
+                        frames.append(self.latest_frames[i].copy())
+                        self.frame_flags[i] = False
+                    else:
+                        frames.append(None)
+            valid = [f for f in frames if f is not None]
+            if not valid:
+                cv2.waitKey(50)
+                continue
+            n = len(self.urls)
+            cols = min(3, n)
+            rows = (n + cols - 1) // cols
+            display_h, display_w = 480, 640
+            grid_h, grid_w = display_h * rows, display_w * cols
+            grid = np.zeros((grid_h, grid_w, 3), dtype=np.uint8)
+            for i, frame in enumerate(frames):
+                if frame is None:
+                    continue
+                r, c = divmod(i, cols)
+                h, w = frame.shape[:2]
+                scale = min(display_w / w, display_h / h)
+                new_w, new_h = int(w * scale), int(h * scale)
+                resized = cv2.resize(frame, (new_w, new_h))
+                y_off, x_off = r * display_h, c * display_w
+                grid[y_off:y_off + new_h, x_off:x_off + new_w] = resized
+                cv2.putText(grid, f"Cam {i+1}", (x_off + 8, y_off + 24),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            cv2.imshow("ESP32-S3 Multi-Camera View", grid)
+            key = cv2.waitKey(30) & 0xFF
+            if key == ord("q"):
+                self.running = False
+        cv2.destroyAllWindows()
+
+
 if __name__ == "__main__":
-    print_help()
-    viewer = Viewer()
-    viewer.run()
+    if MULTI_IPS:
+        urls = [ip.rstrip("/") for ip in MULTI_IPS]
+        viewer = MultiCameraViewer(urls)
+        viewer.run()
+    else:
+        print_help()
+        viewer = Viewer()
+        viewer.run()
