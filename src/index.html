@@ -296,7 +296,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <!-- FPS Chart -->
       <div class="glass-card rounded-2xl p-4">
-        <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500 mb-3">&#x26A1; FPS Over Time</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#x26A1; FPS Over Time</h2>
+          <button class="cta bg-slate-700/50 text-white hover:bg-slate-600 cta-xs" onclick="exportMetricsCSV()">&#x1F4E5; CSV</button>
+        </div>
         <div class="chart-container"><canvas id="fpsChart"></canvas></div>
         <div class="flex gap-4 mt-2 text-[11px] text-slate-500">
           <span>Avg: <span id="fpsAvg" class="font-mono text-slate-300">--</span></span>
@@ -898,6 +901,26 @@ async function resetHeatmap() {
 
 // ── Keyboard ──
 function toggleHelp() { document.getElementById('helpOverlay').classList.toggle('hidden'); }
+
+// ── CSV Export ──
+async function exportMetricsCSV() {
+  try {
+    const r = await fetch('/metrics?metric=all&limit=300');
+    const d = await r.json();
+    const series = d.series || [];
+    if (!series.length) { showToast('No data to export', 'error'); return; }
+    const headers = Object.keys(series[0]).join(',');
+    const rows = series.map(p => Object.values(p).join(','));
+    const csv = [headers, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'metrics_' + Date.now() + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('CSV exported', 'success');
+  } catch(e) { showToast('Export failed', 'error'); }
+}
 
 // ── Mobile Nav ──
 function toggleMobileNav() {
