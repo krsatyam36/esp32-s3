@@ -15,6 +15,12 @@ if typing.TYPE_CHECKING:
 
 
 ANALYSIS_INTERVAL = float(os.environ.get("ANALYSIS_INTERVAL", "5"))
+RSSI_THROTTLE = int(os.environ.get("RSSI_THROTTLE", "-70"))
+RSSI_EMERGENCY = int(os.environ.get("RSSI_EMERGENCY", "-85"))
+LATENCY_THROTTLE = float(os.environ.get("LATENCY_THROTTLE", "15.0"))
+LATENCY_EMERGENCY = float(os.environ.get("LATENCY_EMERGENCY", "30.0"))
+BUFFER_DEPTH_THROTTLE = int(os.environ.get("BUFFER_DEPTH_THROTTLE", "15"))
+BUFFER_DEPTH_EMERGENCY = int(os.environ.get("BUFFER_DEPTH_EMERGENCY", "30"))
 metrics_history: MetricsHistory | None = None
 
 
@@ -42,12 +48,12 @@ class AdaptiveController:
         self._lock = threading.Lock()
         self._running = False
         self._history: deque[dict[str, object]] = deque(maxlen=60)
-        self.rssi_throttle: int = -70
-        self.rssi_emergency: int = -85
-        self.latency_throttle: float = 15.0
-        self.latency_emergency: float = 30.0
-        self.buffer_depth_throttle: int = 15
-        self.buffer_depth_emergency: int = 30
+        self.rssi_throttle: int = RSSI_THROTTLE
+        self.rssi_emergency: int = RSSI_EMERGENCY
+        self.latency_throttle: float = LATENCY_THROTTLE
+        self.latency_emergency: float = LATENCY_EMERGENCY
+        self.buffer_depth_throttle: int = BUFFER_DEPTH_THROTTLE
+        self.buffer_depth_emergency: int = BUFFER_DEPTH_EMERGENCY
         self.rssi: int = 0
         self.latency: float = 0.0
         self.buffer_depth_val: int = 0
