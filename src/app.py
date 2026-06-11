@@ -41,9 +41,14 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingRes
 from pydantic import BaseModel
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "json").lower()
+if LOG_FORMAT == "json":
+    _fmt = '{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","msg":"%(message)s"}'
+else:
+    _fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL, logging.INFO),
-    format='{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","msg":"%(message)s"}',
+    format=_fmt,
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
 log = logging.getLogger("xiao")
@@ -155,6 +160,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 _rate_limit_store: dict[str, collections.deque] = {}
 _RATE_LIMIT = int(os.environ.get("RATE_LIMIT", "60"))
 _RATE_WINDOW = 60.0
+_MAX_BODY_SIZE = int(os.environ.get("MAX_BODY_SIZE", "1048576"))
 
 @app.middleware("http")
 async def rate_limiter(request: Request, call_next):
@@ -174,6 +180,17 @@ async def rate_limiter(request: Request, call_next):
     window.append(now)
     response = await call_next(request)
     return response
+
+
+@app.middleware("http")
+async def body_size_limit(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > _MAX_BODY_SIZE:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "payload_too_large", "max_bytes": _MAX_BODY_SIZE},
+        )
+    return await call_next(request)
 
 
 _API_VERSION = "2.1.0"
@@ -593,6 +610,12 @@ async def delete_alert(idx: int):
 @app.get("/alerts/history")
 async def get_alert_history(limit: int = Query(50), since: float = Query(0)):
     return {"history": alert_manager.get_history(since=since, limit=limit)}
+
+
+@app.post("/alerts/clear")
+async def clear_alerts():
+    alert_manager.history.clear()
+    return {"success": True, "cleared": True}
 
 
 # ─── Feature 8: Performance Metrics ─────────
