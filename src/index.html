@@ -342,7 +342,10 @@
         <h2 class="text-[10px] font-semibold uppercase tracking-[1.5px] text-slate-500">&#128680; YOLO Detection Events</h2>
         <span class="text-[10px] font-mono text-slate-500">Last 50 events</span>
       </div>
-      <div id="eventListFull" class="panel-scroll max-h-[500px] text-sm space-y-1">
+      <div class="mb-3">
+        <input id="eventSearchInput" type="text" placeholder="Search events..." class="w-full text-xs py-1.5 px-3" oninput="filterEventList()" />
+      </div>
+      <div id="eventListFull" class="panel-scroll max-h-[450px] text-sm space-y-1">
         <div class="text-slate-600 text-center py-8">No events detected yet</div>
       </div>
     </div>
@@ -773,6 +776,21 @@ async function fetchTimeline() {
 setInterval(fetchTimeline, 4000); fetchTimeline();
 
 // ── Events ──
+let _allEvents = [];
+function filterEventList() {
+  const q = document.getElementById('eventSearchInput')?.value?.toLowerCase() || '';
+  const efl = $('eventListFull');
+  if (!_allEvents.length) {
+    efl.innerHTML = '<div class="text-slate-600 text-center py-8">No events detected yet</div>';
+    return;
+  }
+  const filtered = q ? _allEvents.filter(e => JSON.stringify(e.objects).toLowerCase().includes(q)) : _allEvents;
+  efl.innerHTML = filtered.slice(-30).reverse().map(e => {
+    const objs = e.objects.map(o => '<span class="bg-sky-600/20 text-sky-400 px-2 py-0.5 rounded text-[11px] font-medium">' + o.class + ' (' + (o.confidence * 100).toFixed(0) + '%)</span>').join(' ');
+    const t = new Date(e.timestamp).toLocaleTimeString();
+    return '<div class="fade-in border-b border-white/5 py-2 flex items-center justify-between"><div class="flex gap-1.5 flex-wrap">' + objs + '</div><span class="text-[10px] text-slate-600 flex-shrink-0">' + t + '</span></div>';
+  }).join('');
+}
 let _lastEventCount = 0;
 let _eventTabViewed = true;
 document.querySelector('[data-tab="events"]')?.addEventListener('click', () => {
@@ -809,16 +827,8 @@ async function fetchEvents() {
       }).join('');
     }
     // Full list
-    const efl = $('eventListFull');
-    if (events.length === 0) {
-      efl.innerHTML = '<div class="text-slate-600 text-center py-8">No events detected yet</div>';
-    } else {
-      efl.innerHTML = events.slice(-30).reverse().map(e => {
-        const objs = e.objects.map(o => '<span class="bg-sky-600/20 text-sky-400 px-2 py-0.5 rounded text-[11px] font-medium">' + o.class + ' (' + (o.confidence * 100).toFixed(0) + '%)</span>').join(' ');
-        const t = new Date(e.timestamp).toLocaleTimeString();
-        return '<div class="fade-in border-b border-white/5 py-2 flex items-center justify-between"><div class="flex gap-1.5 flex-wrap">' + objs + '</div><span class="text-[10px] text-slate-600 flex-shrink-0">' + t + '</span></div>';
-      }).join('');
-    }
+    _allEvents = events;
+    filterEventList();
   } catch(e) {}
 }
 setInterval(fetchEvents, 3000); fetchEvents();
