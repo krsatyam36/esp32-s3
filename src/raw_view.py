@@ -450,6 +450,11 @@ class Viewer:
         self.show_timestamp = False
         self.recording_start_time = 0
         self.frame_dims = (0, 0)
+        self.roi_region = None
+        self.selecting_roi = False
+        self.roi_start = None
+        self.roi_end = None
+        self.show_roi = False
 
         # Threading synchronization variables
         self.latest_frame = None
@@ -491,6 +496,13 @@ class Viewer:
         if self.show_timestamp:
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             ModernHUD.text_sm(frame, ts, frame.shape[1] - 160, 28, (180, 180, 180), 0.4, 1)
+
+        if self.roi_region:
+            x, y, w, h = self.roi_region
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
+            cv2.putText(frame, "ROI", (x, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+        elif self.roi_start and self.roi_end:
+            cv2.rectangle(frame, self.roi_start, self.roi_end, (255, 255, 0), 2)
 
     def handle_keys(self, key: int):
         if key == ord("q"):
@@ -546,6 +558,20 @@ class Viewer:
         elif key == ord("T"):
             self.show_timestamp = not self.show_timestamp
             print(f"Timestamp: {'ON' if self.show_timestamp else 'OFF'}")
+        elif key == ord("i"):
+            self.show_roi = not self.show_roi
+            self.selecting_roi = self.show_roi
+            if not self.show_roi:
+                self.roi_region = None
+                self.roi_start = None
+                self.roi_end = None
+            print(f"ROI selection: {'ON' if self.show_roi else 'OFF'}")
+        elif key == ord("x"):
+            if self.roi_region:
+                self.roi_region = None
+                self.roi_start = None
+                self.roi_end = None
+                print("ROI cleared")
 
     def _capture_loop(self):
         """Background thread dedicated entirely to network streaming.
@@ -608,6 +634,26 @@ class Viewer:
         """Main UI Thread: Handles rendering, AI, and OpenCV events."""
         self.capture_thread.start()
         print("UI Thread initialized. Press 'h' for help.\n")
+
+        def _mouse_callback(event, x, y, flags, param):
+            if not self.show_roi:
+                return
+            if event == cv2.EVENT_LBUTTONDOWN:
+                self.roi_start = (x, y)
+                self.roi_end = (x, y)
+            elif event == cv2.EVENT_MOUSEMOVE and self.roi_start:
+                self.roi_end = (x, y)
+            elif event == cv2.EVENT_LBUTTONUP and self.roi_start:
+                x1, y1 = self.roi_start
+                x2, y2 = x, y
+                rx, ry = min(x1, x2), min(y1, y2)
+                rw, rh = abs(x2 - x1), abs(y2 - y1)
+                if rw > 10 and rh > 10:
+                    self.roi_region = (rx, ry, rw, rh)
+                    print(f"ROI set: ({rx},{ry}) {rw}x{rh}")
+                self.roi_start = None
+                self.roi_end = None
+                self.selecting_roi = False
 
         stream_recording = False
 
@@ -679,6 +725,7 @@ class Viewer:
                 stream_recording = False
 
             title = f"ESP32-S3 Camera Viewer — {w}x{h}"
+            cv2.setMouseCallback(title, _mouse_callback)
             cv2.imshow(title, frame)
 
             key = cv2.waitKey(1) & 0xFF
