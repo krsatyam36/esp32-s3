@@ -2,11 +2,23 @@ services:
   edge-server:
     build: .
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:8000"
     environment:
       - ESP32_IP=${ESP32_IP:-http://192.168.1.100}
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
-      - LOG_LEVEL=INFO
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - YOLO_CONFIDENCE=${YOLO_CONFIDENCE:-0.35}
+      - ANALYSIS_INTERVAL=${ANALYSIS_INTERVAL:-5}
+      - RATE_LIMIT=${RATE_LIMIT:-60}
+    volumes:
+      - ./src:/app/src:ro
+      - ./chroma_db:/app/chroma_db
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/readyz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
