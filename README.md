@@ -2,7 +2,7 @@
 
 # Seeed XIAO ESP32S3 Sense — Edge Intelligence Platform
 
-**v2.1.0** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller, scene classification, activity timeline, object counting, smart alerts, motion heatmap*
+**v2.2.0** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller, scene classification, activity timeline, object counting, smart alerts, motion heatmap*
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1+-F58220?style=flat&logo=platformio&logoColor=white)](https://platformio.org)
 [![ESP32](https://img.shields.io/badge/ESP32-S3-E7352C?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com)
