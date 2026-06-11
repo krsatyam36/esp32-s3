@@ -480,6 +480,7 @@ async def system_status():
 async def get_scene():
     return {
         "current": scene_classifier.current,
+        "confidence": scene_classifier.confidence,
         "history": scene_classifier.history[-20:],
     }
 
