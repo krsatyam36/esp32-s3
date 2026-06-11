@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
+import os
 import threading
 import time
+import urllib.request
 from collections import deque
 from datetime import UTC, datetime
 
 from pydantic import BaseModel
+
+ALERT_WEBHOOK_URL = os.environ.get("ALERT_WEBHOOK_URL", "")
 
 
 class AlertRule(BaseModel):
@@ -58,6 +63,25 @@ class AlertManager:
         for r in self._default_rules:
             self._alerts.append(SmartAlert(r))
 
+    def _send_webhook(self, alert_name: str, objects: list[dict]) -> None:
+        if not ALERT_WEBHOOK_URL:
+            return
+        try:
+            payload = json.dumps({
+                "alert": alert_name,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "objects": objects,
+            }).encode()
+            req = urllib.request.Request(
+                ALERT_WEBHOOK_URL,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            urllib.request.urlopen(req, timeout=5)
+        except Exception:
+            pass
+
     def evaluate(self, objects: list[dict]) -> list[str]:
         triggered = []
         with self._lock:
@@ -75,6 +99,8 @@ class AlertManager:
                             ],
                         }
                     )
+        for name in triggered:
+            self._send_webhook(name, objects)
         return triggered
 
     def get_rules(self) -> list[AlertRule]:
