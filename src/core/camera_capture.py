@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client
+import logging
 import threading
 import time
 import urllib.error
@@ -8,6 +9,8 @@ import urllib.request
 from collections import deque
 
 from src.core.stream_buffer import StreamBuffer
+
+log = logging.getLogger("camera_capture")
 
 
 class CameraCapture:
@@ -87,6 +90,9 @@ class CameraCapture:
                             jpg = self._buffer.get_frame()
                             if jpg is None:
                                 break
+                            if len(jpg) < 100:
+                                log.warning("Discarded tiny frame: %d bytes", len(jpg))
+                                continue
                             with self._lock:
                                 self._latest_frame = jpg
                                 self._frame_id += 1
