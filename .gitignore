@@ -1,26 +1,67 @@
-.pio
-.vscode
-.dn
-*.bin
-*.elf
-*.hex
-node_modules
-.DS_Store
+# PlatformIO
+.pio/
+.pioenvs/
+.dependencies/
 
-# Local config files with secrets
-src/config.py
-src/config.h
-**/config.py
-**/config.h
+# Python
 __pycache__/
-*.pyc
-snapshots/
-recordings/
-chroma_db/
-.DS_Store
-*.log
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.tox/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets & Config (templates in repo)
+src/config.py
+src/config.h
+include/config.h
+.env
+**/config.py
+**/config.h
+
+# Build artifacts
+*.bin
+*.elf
+*.hex
+*.o
+*.a
+*.map
+*.part
+*.d
+
+# Data
+snapshots/
+recordings/
+chroma_db/
+*.npy
+
+# ML models
 *.pt
+*.pth
+*.onnx
+*.engine
+
+# Logs
+*.log
+*.journal
+
+# Docker
+.dockerignore
+
+# Temp
+.dn
