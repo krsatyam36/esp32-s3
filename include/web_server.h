@@ -30,6 +30,8 @@ static esp_err_t stream_handler(httpd_req_t *req) {
 
     res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
     if (res != ESP_OK) return res;
+    httpd_resp_set_hdr(req, "X-Content-Type-Options", "nosniff");
+    httpd_resp_set_hdr(req, "X-Frame-Options", "DENY");
 
     while (true) {
         fb = esp_camera_fb_get();
@@ -232,6 +234,19 @@ static esp_err_t reset_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static void set_cors_headers(httpd_req_t *req) {
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
+}
+
+static esp_err_t options_handler(httpd_req_t *req) {
+    set_cors_headers(req);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_sendstr(req, "{}");
+    return ESP_OK;
+}
+
 static esp_err_t telemetry_handler(httpd_req_t *req) {
     char json[512];
     unsigned long uptime_sec = millis() / 1000;
@@ -308,6 +323,103 @@ static esp_err_t diag_handler(httpd_req_t *req) {
         millis() / 1000,
         WiFi.RSSI(),
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
+static esp_err_t brightness_handler(httpd_req_t *req) {
+    char buf[16];
+    if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing query");
+        return ESP_FAIL;
+    }
+    char val[8];
+    if (httpd_query_key_value(buf, "val", val, sizeof(val)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing val");
+        return ESP_FAIL;
+    }
+    int level = atoi(val);
+    level = constrain(level, -2, 2);
+    sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No sensor");
+        return ESP_FAIL;
+    }
+    s->set_brightness(s, level);
+    char json[64];
+    snprintf(json, sizeof(json), "{\"success\":true,\"brightness\":%d}", level);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
+static esp_err_t contrast_handler(httpd_req_t *req) {
+    char buf[16];
+    if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing query");
+        return ESP_FAIL;
+    }
+    char val[8];
+    if (httpd_query_key_value(buf, "val", val, sizeof(val)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing val");
+        return ESP_FAIL;
+    }
+    int level = atoi(val);
+    level = constrain(level, -2, 2);
+    sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No sensor");
+        return ESP_FAIL;
+    }
+    s->set_contrast(s, level);
+    char json[64];
+    snprintf(json, sizeof(json), "{\"success\":true,\"contrast\":%d}", level);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
+static esp_err_t quality_handler(httpd_req_t *req) {
+    char buf[16];
+    if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing query");
+        return ESP_FAIL;
+    }
+    char val[8];
+    if (httpd_query_key_value(buf, "val", val, sizeof(val)) != ESP_OK) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing val");
+        return ESP_FAIL;
+    }
+    int quality = atoi(val);
+    quality = constrain(quality, 10, 100);
+    sensor_t *s = esp_camera_sensor_get();
+    if (s == NULL) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "No sensor");
+        return ESP_FAIL;
+    }
+    s->set_quality(s, quality);
+    char json[64];
+    snprintf(json, sizeof(json), "{\"success\":true,\"quality\":%d}", quality);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json, strlen(json));
+    return ESP_OK;
+}
+
+static esp_err_t framesize_handler(httpd_req_t *req) {
+    const char* resolutions[] = {"QQVGA", "QVGA", "CIF", "VGA", "SVGA", "UXGA"};
+    const int res_values[] = {FRAMESIZE_QQVGA, FRAMESIZE_QVGA, FRAMESIZE_CIF, FRAMESIZE_VGA, FRAMESIZE_SVGA, FRAMESIZE_UXGA};
+    int count = sizeof(resolutions) / sizeof(resolutions[0]);
+    char json[512];
+    char res_json[256] = "";
+    for (int i = 0; i < count; i++) {
+        char entry[64];
+        int selected = ((int)current_resolution == res_values[i]) ? 1 : 0;
+        snprintf(entry, sizeof(entry), "%s{\"name\":\"%s\",\"value\":%d,\"selected\":%d}",
+                 (i > 0) ? "," : "", resolutions[i], res_values[i], selected);
+        strcat(res_json, entry);
+    }
+    snprintf(json, sizeof(json), "{\"framesizes\":[%s],\"current\":\"%s\"}", res_json, resolutionToString(current_resolution));
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, json, strlen(json));
     return ESP_OK;
@@ -431,6 +543,36 @@ void startWebServer() {
         .handler = ae_handler,
         .user_ctx = NULL
     };
+    httpd_uri_t brightness_uri = {
+        .uri = "/brightness",
+        .method = HTTP_GET,
+        .handler = brightness_handler,
+        .user_ctx = NULL
+    };
+    httpd_uri_t contrast_uri = {
+        .uri = "/contrast",
+        .method = HTTP_GET,
+        .handler = contrast_handler,
+        .user_ctx = NULL
+    };
+    httpd_uri_t quality_uri = {
+        .uri = "/quality",
+        .method = HTTP_GET,
+        .handler = quality_handler,
+        .user_ctx = NULL
+    };
+    httpd_uri_t framesize_uri = {
+        .uri = "/framesize",
+        .method = HTTP_GET,
+        .handler = framesize_handler,
+        .user_ctx = NULL
+    };
+    httpd_uri_t options_uri = {
+        .uri = "/*",
+        .method = HTTP_OPTIONS,
+        .handler = options_handler,
+        .user_ctx = NULL
+    };
 
     Serial.printf("Starting web server on port: %d\n", config.server_port);
     if (httpd_start(&stream_httpd, &config) == ESP_OK) {
@@ -447,6 +589,11 @@ void startWebServer() {
         httpd_register_uri_handler(stream_httpd, &dashboard_uri);
         httpd_register_uri_handler(stream_httpd, &status_uri);
         httpd_register_uri_handler(stream_httpd, &ae_uri);
+        httpd_register_uri_handler(stream_httpd, &brightness_uri);
+        httpd_register_uri_handler(stream_httpd, &contrast_uri);
+        httpd_register_uri_handler(stream_httpd, &quality_uri);
+        httpd_register_uri_handler(stream_httpd, &framesize_uri);
+        httpd_register_uri_handler(stream_httpd, &options_uri);
         Serial.println("Server started with all endpoints");
     } else {
         Serial.println("Server start failed");
