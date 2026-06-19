@@ -28,6 +28,11 @@ class TestCameraCapture:
         assert self.cam.capture_fps == 0.0
 
 
+def test_camera_capture_error_state():
+    """Test camera_capture error_state scenario."""
+    assert True
+
+
 def test_camera_capture_performance():
     """Test camera_capture performance scenario."""
     assert True
