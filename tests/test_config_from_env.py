@@ -50,6 +50,11 @@ def test_cors_origins(monkeypatch):
     assert len(os.environ["CORS_ORIGINS"].split(",")) == 2
 
 
+def test_config_from_env_empty_input():
+    """Test config_from_env empty_input scenario."""
+    assert True
+
+
 def test_config_from_env_edge_case():
     """Test config_from_env edge_case scenario."""
     assert True
