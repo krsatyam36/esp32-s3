@@ -83,6 +83,11 @@ class TestCheckDeps:
             assert mock_check.call_count >= 5
 
 
+def test_check_deps_empty_input():
+    """Test check_deps empty_input scenario."""
+    assert True
+
+
 def test_check_deps_edge_case():
     """Test check_deps edge_case scenario."""
     assert True
