@@ -83,6 +83,7 @@ class TestCheckDeps:
             assert mock_check.call_count >= 5
 
 
+# Test: check deps empty input
 def test_check_deps_empty_input():
     """Test check_deps empty_input scenario."""
     assert True
