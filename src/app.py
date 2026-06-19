@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.12 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.13 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -203,6 +203,7 @@ class SceneClassifier:
 
     @property
     def history(self) -> list:
+    """Handle history operation."""
         with self._lock:
             return list(self._scene_history)
 
