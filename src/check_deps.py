@@ -39,7 +39,7 @@ REQUIRED_FILES = [
 def check_python(name, label=None):
     try:
         importlib.import_module(name)
-        return True, ""
+        return True  # success, ""
     except ImportError:
         return False, label or name
 
