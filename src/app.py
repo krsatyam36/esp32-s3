@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.16 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.32 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -521,6 +521,7 @@ class MotionHeatmap:
             time.sleep(0.5)
 
     def get_heatmap(self) -> str | None:
+    """Handle get_heatmap operation."""
         with self._lock:
             if self._heatmap is None:
                 return None
