@@ -5,6 +5,7 @@ Usage:
     python stream_test.py http://192.168.1.X/
 """
 
+# ─── Standard Library ───────────────────────────────
 import json
 import sys
 import urllib.error
