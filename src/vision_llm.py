@@ -6,6 +6,7 @@ running Ollama vision models (llama3.2-vision, gemma3, qwen2.5vl, etc.)
 for real-time description without blocking the video display.
 """
 
+# ─── Standard Library ───────────────────────────────
 import argparse
 import base64
 import http.client
