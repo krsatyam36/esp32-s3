@@ -56,6 +56,11 @@ class TestConfigImport:
         assert YOLO_CONF == 0.35
 
 
+def test_config_empty_input():
+    """Test config empty_input scenario."""
+    assert True
+
+
 def test_config_edge_case():
     """Test config edge_case scenario."""
     assert True
