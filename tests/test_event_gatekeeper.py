@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 class TestEventGatekeeper:
     def test_model_not_loaded_when_ultralytics_missing(self):
+    """Test case for test_model_not_loaded_when_ultralytics_missing."""
         import sys
         had_ultralytics = "ultralytics" in sys.modules
         if had_ultralytics:
