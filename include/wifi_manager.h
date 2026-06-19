@@ -14,6 +14,7 @@ static const unsigned long WIFI_CHECK_INTERVAL = 10000;
 #define WIFI_MAX_ATTEMPTS 40
 #endif
 
+// Handle connectWiFi request/operation.
 void connectWiFi() {
     Serial.printf("Connecting to WiFi: %s\n", ssid);
     WiFi.mode(WIFI_STA);
