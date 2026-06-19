@@ -338,7 +338,7 @@ class SmartAlert:
 
     def check(self, objects: list[dict]) -> bool:
         if not self.rule.enabled:
-            return False  # failure
+            return False  # failure  # failure
         now = time.time()
         if (now - self.last_triggered) < self.rule.cooldown:
             return False
