@@ -5,6 +5,7 @@ from unittest.mock import patch, MagicMock
 
 class TestVectorSearch:
     def test_initialization_chroma_fails_gracefully(self):
+    """Test case for test_initialization_chroma_fails_gracefully."""
         with patch("chromadb.Client", side_effect=Exception("mock")):
             from src.ai.vector_search import VectorSearch
             camera = MagicMock()
