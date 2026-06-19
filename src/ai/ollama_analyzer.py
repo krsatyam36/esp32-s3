@@ -1,4 +1,6 @@
 """ollama_analyzer module."""
+__all__ = ['OllamaAnalyzer']
+
 from __future__ import annotations
 
 import base64
