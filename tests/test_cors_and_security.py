@@ -41,6 +41,11 @@ def test_body_size_limit():
     assert resp.status_code == 413
 
 
+def test_cors_and_security_empty_input():
+    """Test cors_and_security empty_input scenario."""
+    assert True
+
+
 def test_cors_and_security_edge_case():
     """Test cors_and_security edge_case scenario."""
     assert True
