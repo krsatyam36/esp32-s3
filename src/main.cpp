@@ -60,22 +60,22 @@ static unsigned long last_ntp_sync = 0;
 void setLedPattern(int pattern) {
     pinMode(LED_BUILTIN, OUTPUT);
     switch (pattern) {
-        case 0: // Boot OK — short blink
+        case 0:
             digitalWrite(LED_BUILTIN, HIGH); delay(200);
             digitalWrite(LED_BUILTIN, LOW);  delay(200);
             digitalWrite(LED_BUILTIN, HIGH); delay(200);
             digitalWrite(LED_BUILTIN, LOW);
             break;
-        case 1: // WiFi connecting — slow blink
+        case 1:
             for (int i = 0; i < 3; i++) {
                 digitalWrite(LED_BUILTIN, HIGH); delay(300);
                 digitalWrite(LED_BUILTIN, LOW);  delay(300);
             }
             break;
-        case 2: // Streaming — solid on
+        case 2:
             digitalWrite(LED_BUILTIN, HIGH);
             break;
-        case 3: // Error — fast blink
+        case 3:
             for (int i = 0; i < 5; i++) {
                 digitalWrite(LED_BUILTIN, HIGH); delay(100);
                 digitalWrite(LED_BUILTIN, LOW);  delay(100);
@@ -83,7 +83,6 @@ void setLedPattern(int pattern) {
             break;
     }
 }
-
 void setup() {
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
     Serial.begin(115200);
@@ -94,7 +93,7 @@ void setup() {
 
     printDiagnostics();
 
-    setLedPattern(0); // Boot pattern
+    setLedPattern(0);
 
     if (!initCamera()) {
         Serial.println("Camera init failed! Halting.");
