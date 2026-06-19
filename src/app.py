@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.5 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.15 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -279,6 +279,7 @@ class ObjectCounter:
         self._total_frames_with_objects = 0
 
     def record(self, objects: list[dict]):
+    """Handle record operation."""
         with self._lock:
             self._total_detections += len(objects)
             self._total_frames_with_objects += 1
