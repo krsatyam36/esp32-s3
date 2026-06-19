@@ -1,3 +1,4 @@
+"""adaptive_controller module."""
 from __future__ import annotations
 
 import os
