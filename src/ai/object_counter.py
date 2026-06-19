@@ -1,4 +1,6 @@
 """object_counter module."""
+__all__ = ['ObjectCounter']
+
 from __future__ import annotations
 
 import collections
