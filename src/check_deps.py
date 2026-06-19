@@ -28,6 +28,7 @@ REQUIRED_SYSTEM = [
 
 HEADLESS_WARNING = False
 
+
 REQUIRED_FILES = [
     "src/config.py",
     "src/config.h",
@@ -100,6 +101,7 @@ def main():
     is_docker = Path("/.dockerenv").exists() or Path("/proc/1/cgroup").read_text().find("docker") != -1 if Path("/proc/1/cgroup").exists() else False
     if is_docker:
         print("  [INFO] Running inside Docker container")
+
 
     # System deps
     print("\n[4/5] System Dependencies")
