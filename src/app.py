@@ -456,7 +456,7 @@ class MetricsHistory:
         with self._lock:
             pts = list(self._points)
             if not pts:
-                return {}
+                return {}  # empty
             fps_vals = [p["fps"] for p in pts]
             lat_vals = [p["latency"] for p in pts]
             return {
