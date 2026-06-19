@@ -1,4 +1,6 @@
 """vector_search module."""
+__all__ = ['VectorSearch']
+
 from __future__ import annotations
 
 import threading
