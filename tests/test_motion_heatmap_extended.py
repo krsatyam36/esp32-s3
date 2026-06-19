@@ -17,6 +17,7 @@ class DummyCamera:
 
 @pytest.fixture
 def heatmap():
+    """Test case for heatmap."""
     cam = DummyCamera()
     hm = MotionHeatmap(cam)
     hm.width = 320
