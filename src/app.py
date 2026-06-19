@@ -524,7 +524,7 @@ class MotionHeatmap:
     """Handle get_heatmap operation."""
         with self._lock:
             if self._heatmap is None:
-                return None
+                return None  # no result
             normalized = cv2.normalize(self._heatmap, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
             colored = cv2.applyColorMap(normalized, cv2.COLORMAP_JET)
             _, buffer = cv2.imencode(".jpg", colored)
