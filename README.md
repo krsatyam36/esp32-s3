@@ -2,7 +2,7 @@
 
 # Seeed XIAO ESP32S3 Sense — Edge Intelligence Platform
 
-**v2.3.57** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller, scene classification, activity timeline, object counting, smart alerts, motion heatmap*
+**v2.3.58** — *Edge intelligence platform: streaming, Vision LLM, semantic search, YOLO gatekeeper, adaptive rate controller, scene classification, activity timeline, object counting, smart alerts, motion heatmap*
 
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-6.1+-F58220?style=flat&logo=platformio&logoColor=white)](https://platformio.org)
 [![ESP32](https://img.shields.io/badge/ESP32-S3-E7352C?style=flat&logo=espressif&logoColor=white)](https://www.espressif.com)
@@ -590,7 +590,7 @@ OpenCV's `VideoCapture` uses a tight internal timeout and single-threaded execut
 │   ├── web_server.h         # HTTP server + all API handlers (incl. /ping)
 │   └── dashboard_html.h     # Embedded web dashboard HTML
 ├── src/                     # Python host apps + firmware source
-│   ├── app.py               # FastAPI server (Edge Intelligence Platform v2.3.57)
+│   ├── app.py               # FastAPI server (Edge Intelligence Platform v2.3.58)
 │   ├── raw_view.py          # Feature-rich Python viewer (with --ip CLI arg)
 │   ├── vision_llm.py        # Live feed → Ollama vision LLM (with --ip CLI arg)
 │   ├── stream_test.py       # Connectivity test script
@@ -600,7 +600,7 @@ OpenCV's `VideoCapture` uses a tight internal timeout and single-threaded execut
 │   ├── config.example.py    # Template — copy to config.py & set IP
 │   ├── config.h             # WiFi credentials (gitignored)
 │   ├── config.example.h     # Template — copy to config.h & set WiFi
-│   ├── main.cpp             # ESP32 firmware entry point (v2.3.57 with diagnostics)
+│   ├── main.cpp             # ESP32 firmware entry point (v2.3.58 with diagnostics)
 │   ├── api_utils.py         # Shared API utilities
 │   ├── ai/                  # AI modules
 │   │   ├── __init__.py
