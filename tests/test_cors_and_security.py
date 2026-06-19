@@ -9,6 +9,7 @@ client = TestClient(app)
 
 
 def test_cors_headers_present():
+    """Test case for test_cors_headers_present."""
     resp = client.options("/")
     assert resp.status_code == 200
     assert "access-control-allow-origin" in resp.headers
