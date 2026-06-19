@@ -1,3 +1,4 @@
+"""__init__ module."""
 from src.core.adaptive_controller import AdaptiveController
 from src.core.camera_capture import CameraCapture
 from src.core.esp32_client import ESP32Client
