@@ -6,6 +6,7 @@ import pytest
 
 
 def test_default_config_values():
+    """Test case for test_default_config_values."""
     assert os.environ.get("LOG_LEVEL", "INFO") in ("INFO", "DEBUG", "WARNING", "ERROR")
     assert os.environ.get("LOG_FORMAT", "json") in ("json", "plain")
 
