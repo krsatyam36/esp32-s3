@@ -5,6 +5,7 @@ from src.app import ObjectCounter
 
 class TestObjectCounter:
     def setup_method(self):
+    """Test case for setup_method."""
         self.counter = ObjectCounter()
 
     def test_initial_counts_empty(self):
