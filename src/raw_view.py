@@ -97,6 +97,7 @@ class ESP32Client:
             return None
 
     def get_stream(self):
+    """Handle get_stream operation."""
         # Fail-fast 1.5s timeout prevents the background thread from hanging
         return urllib.request.urlopen(self.base_url + "/", timeout=1.5)
 
