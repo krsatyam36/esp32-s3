@@ -7,6 +7,7 @@ import time
 class TestOllamaAnalyzer:
     @patch("src.app.requests.Session")
     def test_initial_state(self, mock_session):
+    """Test case for test_initial_state."""
         from src.app import OllamaAnalyzer, CameraCapture
         camera = MagicMock(spec=CameraCapture)
         analyzer = OllamaAnalyzer(camera, model="gemma3:latest", interval=5.0)
