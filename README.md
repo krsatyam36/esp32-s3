@@ -59,33 +59,49 @@ It includes:
 
 ## Features
 
-| Feature | File | Description |
-|---------|------|-------------|
-| Low-latency MJPEG streaming | `include/web_server.h` | Serves MJPEG over WiFi on port 80 |
-| Snapshot capture | `include/web_server.h` | Press `s` or use dashboard to save JPEG |
-| Video recording | `src/raw_view.py` | Toggle with `r`, saves to `recordings/` |
-| Resolution switching | `include/camera_utils.h` | 6 levels: QQVGA to UXGA |
-| Face detection | `src/raw_view.py` | Toggle with `f` |
-| QR code reader | `src/raw_view.py` | Toggle with `z`, decodes in real-time |
-| Motion detection | `src/raw_view.py` | Toggle with `m`, highlights movement |
-| LED control | `include/web_server.h` | Toggle with `l`, flash with `L` |
-| Telemetry overlay | `include/web_server.h` | Heap, uptime, RSSI, temp, PSRAM, IP |
-| Web dashboard | `src/index.html` | Full control UI at `http://localhost:8000` |
-| OTA updates | `include/ota_manager.h` | Upload firmware over WiFi |
-| Auto WiFi reconnect | `include/wifi_manager.h` | Handles disconnects gracefully |
-| Vision LLM | `src/vision_llm.py` | Ollama vision models for AI description |
-| Semantic search | `src/ai/vector_search.py` | Natural-language video search via CLIP + ChromaDB |
-| YOLO event gatekeeper | `src/ai/event_gatekeeper.py` | Real-time object detection triggering LLM |
-| Adaptive rate controller | `src/core/adaptive_controller.py` | Auto-adjusts resolution based on RSSI/latency |
-| Boss Mode | `src/app.py` | Detects phone distraction, roasts you via LLM + TTS |
-| Scene classification | `src/ai/scene_classifier.py` | Real-time indoor/outdoor/night/crowded analysis |
-| Activity timeline | `src/ai/timeline_engine.py` | Tracks detection events with duration |
-| Object counting | `src/ai/object_counter.py` | Cumulative stats with top-N class tracking |
-| Smart alerts | `src/ai/smart_alert.py` | Configurable rules with thresholds and cooldown |
-| Motion heatmap | `src/ai/motion_heatmap.py` | Accumulates motion with exponential decay |
-| Performance metrics | `src/core/metrics_history.py` | Ring buffer of FPS/latency/queue depth |
-| Health checks | `include/web_server.h` | `/ping` endpoint for connectivity |
-| Camera diagnostics | `include/camera_utils.h` | Detailed init failure reporting with fallback |
+- 🚀 **Low-latency MJPEG streaming** over WiFi
+- 📷 **Snapshot capture** — press `s` or use the dashboard
+- 🎥 **Video recording** — toggle with `r`, saves to `recordings/`
+- 🔄 **Resolution switching** — `1` (SVGA) / `2` (UXGA) / `3` (VGA) / `4` (QVGA) / `5` (QQVGA)
+- 🧑 **Face detection overlay** — toggle with `f`
+- 📱 **QR code reader** — toggle with `z`, decodes in real time
+- 🏃 **Motion detection** — toggle with `m`, highlights movement
+- 💡 **LED control** — toggle with `l`, flash with `L`
+- 📊 **Telemetry overlay** — toggle with `t` (heap, uptime, RSSI, temp, PSRAM, IP)
+- 🌐 **Web dashboard** — full control UI at `http://localhost:8000`
+- 📡 **OTA updates** — upload firmware over WiFi via ArduinoOTA
+- 🔁 **Auto WiFi reconnect** — handles disconnects gracefully
+- 🤖 **Vision LLM** — stream frames to local Ollama vision models (gemma3, llama3.2-vision, qwen2.5vl) for real-time AI description
+- 🎨 **Modern HUD overlay** — drop shadows, translucent dark panels, and feature badges
+- 🔄 **Stream rotation** — rotate the view 90°/180°/270° with `o`
+- ✚ **Rule-of-thirds grid** — composition aid toggle with `g`
+- 🎯 **Center crosshair** — alignment guide toggle with `c`
+- ⏱ **Recording timer** — live `MM:SS` counter with red indicator
+- 🖥 **Fullscreen mode** — `f` key on the web dashboard
+- 🔍 **Semantic search** — natural-language video search via CLIP + ChromaDB
+- 👁 **YOLO event gatekeeper** — real-time object detection triggering LLM analysis
+- ⚡ **Adaptive rate controller** — auto-adjusts resolution & interval based on RSSI/latency
+- ☠️ **Boss Mode** — detects cell phone distraction & roasts you via LLM + TTS
+- 🏠 **Scene classification** — real-time scene analysis (indoor/outdoor/night/crowded) using CV heuristics, no ML dependency
+- 📋 **Activity timeline** — tracks detection events with duration and creates a searchable timeline
+- 🔢 **Object counting** — cumulative detection statistics with top-N class tracking
+- 🔔 **Smart alert system** — configurable rules with per-class confidence thresholds and cooldown
+- 📈 **Performance metrics history** — ring buffer of FPS/latency/queue depth for real-time charts
+- 🌡️ **Motion heatmap** — accumulates motion regions with exponential decay into a visual heatmap
+- ❤️ **Health endpoint** — `/ping` for connectivity checks
+- 🩺 **Camera diagnostics** — detailed init failure reporting with automatic fallback
+- 🔁 **Exponential backoff reconnect** — resilient stream recovery in viewer
+- 🖼️ **Frame dimensions** — displayed in viewer window title
+- 🧪 **Stream test script** — `stream_test.py` for quick connectivity check
+- 🎛️ **CLI arguments** — override IP, port, and model via `--ip` command line argument
+- 🧰 **Makefile** — `make viewer`, `make server`, `make vision`, `make test`, `make check` for quick commands
+- ✅ **Setup validation** — `python src/check_deps.py` verifies all dependencies and configuration
+- 🔄 **Camera flip/mirror** — toggle vertical flip and horizontal mirror from the dashboard
+- 🏥 **Diagnostics endpoint** — `/diag` returns full chip info, firmware version, and system health
+- 📊 **Aggregated dashboard** — `/dashboard-data` returns all telemetry in a single call
+- 📊 **Analytics dashboard** — real-time FPS and latency charts via Chart.js
+- 🔄 **Tabbed UI** — organized panels for Dashboard, Analytics, Events, Alerts, and Heatmap
+- ⚙️ **Alert rules management** — enable/disable alert rules directly from the web UI
 
 ## System Prerequisites
 
@@ -400,7 +416,21 @@ make vision ESP_IP=http://192.168.1.X/
 | `g` | Toggle grid overlay |
 | `h` | Show help |
 
----
+### 10. Makefile Commands
+
+A `Makefile` is provided for convenience:
+
+```bash
+make viewer        # Run OpenCV viewer (set ESP_IP=http://... to override)
+make server        # Run FastAPI web server
+make vision        # Run Vision LLM CLI
+make test          # Run connectivity test
+make upload        # Upload firmware via USB
+make ota           # Upload firmware via OTA
+make monitor       # Open serial monitor
+```
+
+### 11. FastAPI Server (app.py)
 
 ### Step 10: FastAPI Server (app.py)
 
@@ -417,12 +447,18 @@ make server
 
 Open **http://localhost:8000** in your browser.
 
-**Web dashboard tabs:**
-- **Dashboard** — Live stream, LED/resolution controls, telemetry
-- **Analytics** — FPS & latency charts (Chart.js), object stats, timeline
-- **Events** — YOLO detection event log
-- **Alerts** — Alert rules management (enable/disable, thresholds)
-- **Heatmap** — Motion heatmap visualization (with reset button)
+**Web dashboard features (tabbed UI):**
+- Live MJPEG stream with grid overlay & rotation controls
+- AI Vision panel with model selector, analysis interval, and real-time LLM results
+- YOLO event log showing detected objects with confidence and severity
+- Semantic search — search archived frames by natural language
+- Adaptive controller status — shows current mode (normal/throttled/emergency)
+- ESP32 controls — LED, 6-level resolution, telemetry, snapshots
+- **Scene classification** — real-time indoor/outdoor/night/crowded detection
+- **Analytics tab** — FPS & latency charts (Chart.js), object detection stats, activity timeline
+- **Events tab** — full YOLO detection event log
+- **Alerts tab** — configurable alert rules with enable/disable and history
+- **Heatmap tab** — motion heatmap visualization with reset
 
 **REST API endpoints** (all prefixed with `http://localhost:8000`):
 
@@ -435,26 +471,24 @@ Open **http://localhost:8000** in your browser.
 | `/interval` | POST | Set analysis interval |
 | `/events` | GET | YOLO detection events |
 | `/search` | GET/POST | Semantic search |
-| `/system-status` | GET | Full system status |
+| `/system-status` | GET | Full system status with all subsystems |
 | `/health` | GET | ESP32 + Ollama connectivity |
-| `/telemetry` | GET | ESP32 telemetry proxy |
+| `/telemetry` | GET | ESP32 telemetry proxy (includes IP, chip info) |
 | `/led` | POST | Toggle LED |
 | `/res` | POST | Set resolution |
 | `/models` | GET | Available Ollama models |
-| `/ping` | GET | Health check |
-| `/scene` | GET | Scene classification |
-| `/timeline` | GET | Activity timeline |
-| `/stats` | GET | Object counting stats |
-| `/alerts` | GET | Alert rules |
-| `/alerts/{idx}` | PUT/DELETE | Update/delete alert |
-| `/metrics` | GET | Performance metrics |
-| `/heatmap` | GET | Motion heatmap (base64 JPEG) |
-| `/heatmap/reset` | POST | Reset heatmap |
-| `/flip` | POST | Toggle vflip/hmirror |
-| `/diag` | GET | Full ESP32 diagnostics |
-| `/dashboard-data` | GET | Aggregated telemetry |
-
----
+| `/ping` | GET | Health check (status, IP, uptime) |
+| `/scene` | GET | Current scene classification + history |
+| `/timeline` | GET | Activity timeline entries and active events |
+| `/stats` | GET | Object counting statistics and top classes |
+| `/alerts` | GET | Alert rules, history, and stats |
+| `/alerts/{idx}` | PUT/DELETE | Update or delete alert rule |
+| `/metrics` | GET | Performance metrics time series |
+| `/heatmap` | GET | Motion heatmap as base64 JPEG |
+| `/heatmap/reset` | POST | Reset accumulated motion heatmap |
+| `/flip` | POST | Toggle camera vflip or hmirror |
+| `/diag` | GET | Full ESP32 diagnostics (chip, flash, PSRAM, SDK) |
+| `/dashboard-data` | GET | Aggregated telemetry for frontend |
 
 ## Boss Mode
 
@@ -506,18 +540,16 @@ OpenCV's `VideoCapture` uses a tight internal timeout and single-threaded execut
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `http://IP/` | GET | MJPEG stream |
-| `http://IP/snapshot` | GET | Single JPEG frame |
-| `http://IP/res?val=UXGA` | GET | Set resolution |
-| `http://IP/led?state=on` | GET | Toggle LED |
-| `http://IP/flash?count=5` | GET | Flash LED |
-| `http://IP/telemetry` | GET | JSON telemetry |
-| `http://IP/ping` | GET | Health check |
-| `http://IP/diag` | GET | Full diagnostics |
-| `http://IP/flip?mode=v` | GET | Toggle flip/mirror |
-| `http://IP/dashboard` | GET | HTML dashboard |
-
----
+| `/` | GET | MJPEG stream |
+| `/snapshot` | GET | Single JPEG frame |
+| `/res?val=QQVGA|QVGA|VGA|CIF|SVGA|UXGA` | GET | Change camera resolution (6 levels) |
+| `/led?state=on|off` | GET | Toggle built-in LED |
+| `/flash?count=N` | GET | Flash LED N times (1-20) |
+| `/telemetry` | GET | JSON: heap, uptime, RSSI, IP, resolution, PSRAM, total_PSRAM, temperature, chip_id, cpu_freq, camera_init_attempts, framesize |
+| `/ping` | GET | Health check: status, uptime, IP |
+| `/diag` | GET | Full chip diagnostics: model, cores, flash, PSRAM, SDK, firmware version |
+| `/flip?mode=v|h` | GET | Toggle vertical flip (v) or horizontal mirror (h) |
+| `/dashboard` | GET | Full web dashboard (embedded) |
 
 ## Troubleshooting
 
@@ -542,101 +574,77 @@ OpenCV's `VideoCapture` uses a tight internal timeout and single-threaded execut
 ## Project Structure with File Locations
 
 ```
-~/Projects/xiao/
-├── platformio.ini                 # Board config, PSRAM flags, upload speed
-├── Makefile                       # `make viewer`, `make server`, `make upload`, etc.
-├── README.md                      # This file
-│
-├── include/                       # C++ firmware headers
-│   ├── camera_utils.h             #   Camera init(`initCamera()`), 6-level resolution (`setResolution()`)
-│   ├── wifi_manager.h             #   WiFi connect (`connectWiFi()`), auto-reconnect (`handleWiFi()`)
-│   ├── ota_manager.h              #   Over-the-air update handler (`setupOTA()`, `handleOTA()`)
-│   ├── web_server.h               #   HTTP server + all API handlers (stream, snapshot, LED, telemetry, ping, diag, flip, dashboard)
-│   └── dashboard_html.h           #   Embedded HTML dashboard (served at /dashboard)
-│
-├── src/                           # Python host apps + firmware source
-│   ├── main.cpp                   #   ESP32 firmware entry point: setup() → initCamera → connectWiFi → setupOTA → startWebServer
-│   ├── config.h                   #   ← YOUR WIFI CREDENTIALS HERE (gitignored)
-│   ├── config.example.h           #   Template — copy to config.h
-│   ├── config.py                  #   ← YOUR ESP32 IP HERE (gitignored)
-│   ├── config.example.py          #   Template — copy to config.py
-│   ├── app.py                     #   FastAPI server (v2.1.0 Edge Intelligence Platform)
-│   ├── raw_view.py                #   Feature-rich OpenCV viewer (--ip CLI arg supported)
-│   ├── vision_llm.py              #   Live feed → Ollama vision LLM
-│   ├── stream_test.py             #   Connectivity test script
-│   ├── check_deps.py              #   Dependency and config validator
-│   ├── index.html                 #   Web dashboard HTML (tabbed UI + Chart.js)
-│   ├── api_utils.py               #   Shared API utilities
-│   │
-│   ├── ai/                        #   AI modules
+.
+├── Makefile                 # Common dev commands (`make viewer`, etc.)
+├── platformio.ini           # Board & PSRAM configuration
+├── README.md                # This documentation
+├── recordings/              # Captured video storage
+├── snapshots/               # Captured image storage
+├── chroma_db/               # ChromaDB persistent store (gitignored)
+├── test/                    # PlatformIO test runner
+├── testing/                 # Manual test documentation
+├── include/                 # C++ firmware headers
+│   ├── camera_utils.h       # Camera init, diagnostics, 6-level resolution
+│   ├── wifi_manager.h       # WiFi connect with auto-reconnect
+│   ├── ota_manager.h        # Over-the-air updates
+│   ├── web_server.h         # HTTP server + all API handlers (incl. /ping)
+│   └── dashboard_html.h     # Embedded web dashboard HTML
+├── src/                     # Python host apps + firmware source
+│   ├── app.py               # FastAPI server (Edge Intelligence Platform v2.3.0)
+│   ├── raw_view.py          # Feature-rich Python viewer (with --ip CLI arg)
+│   ├── vision_llm.py        # Live feed → Ollama vision LLM (with --ip CLI arg)
+│   ├── stream_test.py       # Connectivity test script
+│   ├── check_deps.py        # Dependency and config validator
+│   ├── index.html           # Web dashboard with tabbed UI and charts
+│   ├── config.py            # Your local IP (gitignored)
+│   ├── config.example.py    # Template — copy to config.py & set IP
+│   ├── config.h             # WiFi credentials (gitignored)
+│   ├── config.example.h     # Template — copy to config.h & set WiFi
+│   ├── main.cpp             # ESP32 firmware entry point (v2.3.0 with diagnostics)
+│   ├── api_utils.py         # Shared API utilities
+│   ├── ai/                  # AI modules
 │   │   ├── __init__.py
-│   │   ├── event_gatekeeper.py    #     YOLO object detection + LLM trigger
-│   │   ├── motion_heatmap.py      #     Motion accumulation with exponential decay
-│   │   ├── object_counter.py      #     Cumulative detection stats
-│   │   ├── ollama_analyzer.py     #     Ollama vision LLM client
-│   │   ├── scene_classifier.py    #     Indoor/outdoor/night/crowded heuristics
-│   │   ├── smart_alert.py         #     Configurable alert rules
-│   │   ├── timeline_engine.py     #     Activity timeline + duration tracking
-│   │   └── vector_search.py       #     CLIP + ChromaDB semantic search
-│   │
-│   └── core/                      #   Core modules
+│   │   ├── event_gatekeeper.py
+│   │   ├── motion_heatmap.py
+│   │   ├── object_counter.py
+│   │   ├── ollama_analyzer.py
+│   │   ├── scene_classifier.py
+│   │   ├── smart_alert.py
+│   │   ├── timeline_engine.py
+│   │   └── vector_search.py
+│   └── core/                # Core modules
 │       ├── __init__.py
-│       ├── adaptive_controller.py #     Auto-adjusts resolution/interval by RSSI
-│       ├── camera_capture.py      #     Frame capture thread for server
-│       ├── esp32_client.py        #     HTTP client to ESP32 endpoints
-│       ├── metrics_history.py     #     Ring buffer of FPS/latency/queue depth
-│       └── stream_buffer.py       #     Thread-safe JPEG buffer with flushing
-│
-├── esp32-s3/                      # Older project version (reference, kept for migration)
-│   ├── platformio.ini
+│       ├── adaptive_controller.py
+│       ├── camera_capture.py
+│       ├── esp32_client.py
+│       ├── metrics_history.py
+│       └── stream_buffer.py
+├── esp32-s3/                # Older project version (reference)
 │   ├── Makefile
-│   ├── include/                   #   C++ headers (identical to root include/)
-│   │   ├── camera_utils.h
-│   │   ├── wifi_manager.h
-│   │   ├── ota_manager.h
-│   │   ├── web_server.h
-│   │   └── dashboard_html.h
-│   ├── src/
-│   │   ├── main.cpp
-│   │   ├── config.h               #   WiFi credentials (copy of root src/config.h)
-│   │   └── config.example.h
 │   ├── app.py
 │   ├── raw_view.py
 │   ├── vision_llm.py
 │   ├── stream_test.py
-│   └── index.html
-│
-├── recordings/                    # Video recordings directory (created at runtime, gitignored)
-├── snapshots/                     # Snapshot images directory (created at runtime, gitignored)
-├── chroma_db/                     # ChromaDB persistent store (gitignored)
-│
-├── test/                          # PlatformIO test runner
-├── testing/                       # Manual test documentation
-├── tests/                         # Python unit tests
-├── snapshots/                     # Old recordings
-├── recordings/                    # Old recordings
-│
-├── requirements.txt               # Python dependencies
-├── requirements-dev.txt           # Dev dependencies (ruff, mypy, pytest)
-├── pyproject.toml                 # Python project metadata
-├── py.typed                       # PEP 561 marker
-├── ruff.toml                      # Ruff linter config
-├── mypy.ini                       # Mypy type checker config
-├── pytest.ini                     # Pytest config
-├── .coveragerc                    # Coverage config
-├── .python-version                # pyenv Python version
-├── .env.example                   # Environment variables template
-├── .pre-commit-config.yaml        # Pre-commit hooks
-├── .gitignore                     # Git ignore rules
-│
-├── Dockerfile                     # Docker image for app.py
-├── docker-compose.yml             # Docker Compose for app.py + Ollama
-│
-├── CHANGELOG.md                   # Release history
-├── CODE_OF_CONDUCT.md             # Community guidelines
-├── CONTRIBUTING.md                # Contribution guide
-├── SECURITY.md                    # Security policy
-└── .github/workflows/ci.yml       # GitHub Actions CI
+│   ├── index.html
+│   ├── platformio.ini
+│   ├── include/
+│   └── src/
+│       ├── config.example.h
+│       └── main.cpp
+├── Dockerfile               # Docker image for app.py
+├── docker-compose.yml       # Docker Compose for app.py + Ollama
+├── requirements.txt         # Python dependencies
+├── requirements-dev.txt     # Dev dependencies
+├── pyproject.toml           # Python project metadata
+├── .gitignore               # Git ignore rules
+├── .github/workflows/
+│   ├── ci.yml               # CI workflow
+│   ├── codeql.yml           # CodeQL analysis
+│   ├── docker.yml           # Docker build
+│   ├── firmware.yml         # Firmware build
+│   ├── labeler.yml          # PR labeler
+│   └── stale.yml            # Stale issue management
+└── CHANGELOG.md             # Release history
 ```
 
 ---
