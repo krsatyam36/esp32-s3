@@ -349,7 +349,7 @@ class SmartAlert:
         ]
         if len(matches) >= self.rule.min_count:
             self.last_triggered = now
-            return True  # success
+            return True  # success  # success
         return False
 
 
