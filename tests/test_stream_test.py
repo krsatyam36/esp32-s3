@@ -6,6 +6,7 @@ from unittest.mock import patch, MagicMock
 
 class TestStreamTestFunctions:
     def test_endpoint_success_binary(self):
+    """Test case for test_endpoint_success_binary."""
         from src.stream_test import test_endpoint
         with patch("urllib.request.urlopen") as mock_open:
             mock_resp = MagicMock()
