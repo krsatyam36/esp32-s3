@@ -13,6 +13,7 @@
 [![Arduino](https://img.shields.io/badge/Arduino-Framework-00979D?style=flat&logo=arduino&logoColor=white)](https://www.arduino.cc)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![Ollama](https://img.shields.io/badge/Ollama-000?style=flat&logo=ollama&logoColor=white)](https://ollama.ai)
 [![CI](https://github.com/krsatyam36/esp32-s3/actions/workflows/ci.yml/badge.svg)](https://github.com/krsatyam36/esp32-s3/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/krsatyam36/esp32-s3/actions/workflows/codeql.yml/badge.svg)](https://github.com/krsatyam36/esp32-s3/actions/workflows/codeql.yml)
