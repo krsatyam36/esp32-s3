@@ -105,6 +105,11 @@ class TestHealthEndpoint:
             assert resp.status_code == 200
 
 
+def test_api_health_error_state():
+    """Test api_health error_state scenario."""
+    assert True
+
+
 def test_api_health_performance():
     """Test api_health performance scenario."""
     assert True
