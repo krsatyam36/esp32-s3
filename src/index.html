@@ -561,7 +561,6 @@ function showToast(msg, type='info') {
   el.className = 'toast toast-visible';
   setTimeout(() => { el.className = 'toast toast-enter'; }, 3000);
 }
-
 // ── Scene ──
 async function fetchScene() {
   try {
@@ -986,7 +985,6 @@ function toggleTheme() {
   document.body.classList.toggle('light');
   localStorage.setItem('xiao-theme', document.body.classList.contains('light') ? 'light' : 'dark');
 }
-
 document.addEventListener('keydown', e => {
   if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); takeSnapshot(); }
   if (e.key >= '1' && e.key <= '6' && !e.ctrlKey && !e.metaKey) {
@@ -1019,7 +1017,6 @@ async function updateFeatureBadges() {
 }
 setInterval(updateFeatureBadges, 10000);
 updateFeatureBadges();
-
 // ── Init Charts after DOM ──
 document.addEventListener('DOMContentLoaded', initCharts);
 if (document.readyState !== 'loading') initCharts();
