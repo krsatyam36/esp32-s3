@@ -298,6 +298,7 @@ class ObjectCounter:
             })
 
     def get_counts(self) -> dict:
+    """Handle get_counts operation."""
         with self._lock:
             return dict(sorted(self._counts.items(), key=lambda x: -x[1]))
 
