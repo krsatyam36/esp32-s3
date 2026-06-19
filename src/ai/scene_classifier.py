@@ -1,4 +1,6 @@
 """scene_classifier module."""
+__all__ = ['SceneClassifier']
+
 from __future__ import annotations
 
 import threading
