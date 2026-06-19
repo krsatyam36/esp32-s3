@@ -61,7 +61,7 @@ It includes:
 - **Standalone Python viewer** (`src/raw_view.py`) — feature-rich OpenCV viewer with face/QR/motion detection, recording, and HUD.
 - **Vision LLM CLI** (`src/vision_llm.py`) — stream frames to local Ollama vision models for real-time AI description.
 
-## Features
+## Key Features
 
 - 🚀 **Low-latency MJPEG streaming** over WiFi
 - 📷 **Snapshot capture** — press `s` or use the dashboard
