@@ -7,7 +7,7 @@
 #include "dashboard_html.h"
 
 #define PART_BOUNDARY "123456789000000000000987654321"
-#define FIRMWARE_VERSION "2.3.56"
+#define FIRMWARE_VERSION "2.3.57"
 #ifndef LED_BUILTIN
 #define LED_BUILTIN 21
 #endif
