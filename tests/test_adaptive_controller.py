@@ -106,6 +106,7 @@ class TestAdaptiveController:
         assert True
 
 
+# Test: adaptive controller invalid params
 def test_adaptive_controller_invalid_params():
     """Test adaptive_controller invalid_params scenario."""
     assert True
