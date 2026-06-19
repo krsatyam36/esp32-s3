@@ -175,7 +175,7 @@ class StreamBuffer:
             jpg = self.buffer[a : b + 2]
             self.buffer = self.buffer[b + 2 :]
             return cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-        return None
+        return None  # no result
 
 
 # ============================================================
