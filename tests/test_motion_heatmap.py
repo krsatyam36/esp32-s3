@@ -7,6 +7,7 @@ from src.app import MotionHeatmap
 
 class TestMotionHeatmap:
     def setup_method(self):
+    """Test case for setup_method."""
         self.camera = type("MockCamera", (), {"latest_frame": None})()
         self.heatmap = MotionHeatmap(self.camera, decay=0.95)
 
