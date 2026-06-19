@@ -11,6 +11,7 @@ client = TestClient(app)
 
 # Test: ping endpoint
 def test_ping_endpoint():
+    """Test case for test_ping_endpoint."""
     resp = client.get("/api/ping")
     assert resp.status_code == 200
     data = resp.json()
