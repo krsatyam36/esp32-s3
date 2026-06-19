@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.0 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.1 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -15,6 +15,7 @@ Dependencies:
     pip install ultralytics
 """
 
+# ─── Standard Library ───────────────────────────────
 import asyncio
 import base64
 import collections
