@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.5 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.21 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -378,6 +378,7 @@ class AlertManager:
         return triggered
 
     def get_rules(self) -> list[AlertRule]:
+    """Handle get_rules operation."""
         with self._lock:
             return [a.rule for a in self._alerts]
 
