@@ -15,6 +15,7 @@ def _make_jpeg_bytes(size=(64, 64)):
 
 @pytest.fixture
 def buffer():
+    """Test case for buffer."""
     return StreamBuffer()
 
 
