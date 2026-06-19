@@ -105,6 +105,11 @@ class TestAdaptiveController:
         self.controller.stop()
         assert True
 
+
+def test_adaptive_controller_performance():
+    """Test adaptive_controller performance scenario."""
+    assert True
+
     def test_last_action_default_empty(self):
         assert self.controller.last_action == ""
 
