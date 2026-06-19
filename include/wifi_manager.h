@@ -49,6 +49,7 @@ void handleWiFi() {
     }
 }
 
+// Handle isWiFiConnected request/operation.
 bool isWiFiConnected() {
     return WiFi.status() == WL_CONNECTED;
 }
