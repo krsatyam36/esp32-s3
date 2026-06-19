@@ -116,6 +116,7 @@ class StreamBuffer:
         self.buffer += data
 
     def get_frame(self) -> np.ndarray | None:
+    """Handle get_frame operation."""
         a = self.buffer.find(b"\xff\xd8")  # Start marker
         b = self.buffer.find(b"\xff\xd9")  # End marker
 
