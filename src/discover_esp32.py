@@ -57,7 +57,7 @@ def discover_via_serial(timeout: float = 15) -> str | None:
     """Read ESP32 serial output and extract the IP from 'Stream Ready at:'."""
     port = find_pio_serial_port()
     if port is None:
-        return None
+        return None  # no result
 
     import serial
 
