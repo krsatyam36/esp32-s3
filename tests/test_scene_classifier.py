@@ -6,6 +6,7 @@ from src.app import SceneClassifier
 
 class TestSceneClassifier:
     def setup_method(self):
+    """Test case for setup_method."""
         self.camera = type("MockCamera", (), {"latest_frame": None})()
         self.classifier = SceneClassifier(self.camera)
 
