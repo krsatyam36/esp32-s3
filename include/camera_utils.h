@@ -97,6 +97,7 @@ bool setResolution(framesize_t size) {
     return false;
 }
 
+// Handle setSpecialEffect request/operation.
 bool setSpecialEffect(int effect) {
     sensor_t *s = esp_camera_sensor_get();
     if (s == NULL) return false;
