@@ -76,6 +76,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     return res;
 }
 
+// Handle snapshot_handler request/operation.
 static esp_err_t snapshot_handler(httpd_req_t *req) {
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb) {
