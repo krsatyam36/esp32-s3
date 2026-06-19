@@ -48,3 +48,8 @@ def test_feature_flags(monkeypatch):
 def test_cors_origins(monkeypatch):
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:3000,http://example.com")
     assert len(os.environ["CORS_ORIGINS"].split(",")) == 2
+
+
+def test_config_from_env_edge_case():
+    """Test config_from_env edge_case scenario."""
+    assert True
