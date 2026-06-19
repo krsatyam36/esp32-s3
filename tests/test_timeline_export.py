@@ -9,6 +9,7 @@ from src.ai.timeline_engine import TimelineEngine
 
 @pytest.fixture
 def timeline():
+    """Test case for timeline."""
     return TimelineEngine()
 
 
