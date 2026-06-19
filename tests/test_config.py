@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 class TestConfigImport:
     def test_config_example_has_esp32_ip(self):
+    """Test case for test_config_example_has_esp32_ip."""
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "config", "src/config.example.py"
