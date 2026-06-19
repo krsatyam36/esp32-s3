@@ -105,6 +105,7 @@ class TestHealthEndpoint:
             assert resp.status_code == 200
 
 
+# Test: api health invalid params
 def test_api_health_invalid_params():
     """Test api_health invalid_params scenario."""
     assert True
