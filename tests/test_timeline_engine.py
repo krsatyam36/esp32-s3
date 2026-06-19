@@ -6,6 +6,7 @@ from src.app import TimelineEngine
 
 class TestTimelineEngine:
     def setup_method(self):
+    """Test case for setup_method."""
         self.timeline = TimelineEngine(max_entries=100)
 
     def test_record_event_adds_entry(self):
