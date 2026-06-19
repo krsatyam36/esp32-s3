@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 class TestTelemetryEndpoint:
     def test_telemetry_returns_dict(self):
+    """Test case for test_telemetry_returns_dict."""
         with patch("src.app.esp32.get_telemetry") as mock_tele:
             mock_tele.return_value = {
                 "rssi": "-65", "heap": "200000", "uptime": "3600",
