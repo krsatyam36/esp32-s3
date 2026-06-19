@@ -152,6 +152,7 @@ class FrameAnalyzer:
         self.trail_enabled = True
 
     def detect_faces(self, frame: np.ndarray) -> list:
+    """Handle detect_faces operation."""
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
         return faces
