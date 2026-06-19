@@ -42,7 +42,6 @@ def _auto_discover() -> str:
     print("Or provide the IP manually: python vision_llm.py --ip http://192.168.1.X/")
     sys.exit(1)
 
-
 if args.ip:
     BASE_URL = args.ip.rstrip("/")
 else:
