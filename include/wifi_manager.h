@@ -38,6 +38,7 @@ void connectWiFi() {
     }
 }
 
+// Handle handleWiFi request/operation.
 void handleWiFi() {
     if (millis() - last_wifi_check < WIFI_CHECK_INTERVAL) return;
     last_wifi_check = millis();
