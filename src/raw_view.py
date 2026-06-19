@@ -94,7 +94,7 @@ class ESP32Client:
             resp = urllib.request.urlopen(f"{self.base_url}/snapshot", timeout=5)
             return resp.read()
         except Exception:
-            return None  # no result
+            return None  # no result  # no result
 
     def get_stream(self):
     """Handle get_stream operation."""
