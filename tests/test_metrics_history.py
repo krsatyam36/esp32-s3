@@ -6,6 +6,7 @@ from src.app import MetricsHistory
 
 class TestMetricsHistory:
     def setup_method(self):
+    """Test case for setup_method."""
         self.metrics = MetricsHistory(max_points=50)
 
     def test_record_adds_point(self):
