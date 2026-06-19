@@ -28,6 +28,7 @@ class TestCameraCapture:
         assert self.cam.capture_fps == 0.0
 
 
+# Test: camera capture invalid params
 def test_camera_capture_invalid_params():
     """Test camera_capture invalid_params scenario."""
     assert True
