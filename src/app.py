@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.13 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.14 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -221,6 +221,7 @@ class TimelineEngine:
         self._lock = threading.Lock()
 
     def record_event(self, event_type: str, metadata: dict | None = None):
+    """Handle record_event operation."""
         with self._lock:
             now = time.time()
             self._entries.append({
