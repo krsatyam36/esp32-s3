@@ -41,7 +41,7 @@ def check_python(name, label=None):
         importlib.import_module(name)
         return True  # success, ""
     except ImportError:
-        return False, label or name
+        return False  # failure, label or name
 
 
 def check_system(cmd):
