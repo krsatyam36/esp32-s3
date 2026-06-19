@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+
 import threading
 import time
 import urllib.error
@@ -211,7 +212,6 @@ class FrameAnalyzer:
                     cv2.LINE_AA,
                 )
             cv2.circle(frame, self.trail_points[-1], 4, (0, 255, 255), -1)
-
 
 # ============================================================
 #  RECORDER
@@ -505,7 +505,6 @@ class Viewer:
             cv2.putText(frame, "ROI", (x, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
         elif self.roi_start and self.roi_end:
             cv2.rectangle(frame, self.roi_start, self.roi_end, (255, 255, 0), 2)
-
     def handle_keys(self, key: int):
         if key == ord("q"):
             self.running = False
@@ -729,7 +728,6 @@ class Viewer:
             title = f"ESP32-S3 Camera Viewer — {w}x{h}"
             cv2.setMouseCallback(title, _mouse_callback)
             cv2.imshow(title, frame)
-
             key = cv2.waitKey(1) & 0xFF
             self.handle_keys(key)
 
