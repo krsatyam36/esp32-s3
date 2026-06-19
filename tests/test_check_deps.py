@@ -6,6 +6,7 @@ import importlib
 
 class TestCheckDeps:
     def test_required_python_list_defined(self):
+    """Test case for test_required_python_list_defined."""
         from src.check_deps import REQUIRED_PYTHON
         assert "cv2" in REQUIRED_PYTHON
         assert "numpy" in REQUIRED_PYTHON
