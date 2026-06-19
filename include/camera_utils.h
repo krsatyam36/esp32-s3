@@ -27,6 +27,7 @@
 static framesize_t current_resolution = FRAMESIZE_UXGA;
 static int camera_init_attempts = 0;
 
+// Handle initCamera request/operation.
 bool initCamera() {
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
