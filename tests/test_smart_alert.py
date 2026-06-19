@@ -6,6 +6,7 @@ from src.ai.smart_alert import SmartAlert
 
 class TestSmartAlert:
     def test_check_matches_class_and_confidence(self):
+    """Test case for test_check_matches_class_and_confidence."""
         rule = AlertRule(name="test_alert", class_name="person", min_confidence=0.5)
         alert = SmartAlert(rule)
         assert alert.check([{"class": "person", "confidence": 0.7}]) is True
