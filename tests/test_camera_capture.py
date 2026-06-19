@@ -7,6 +7,7 @@ from src.core.stream_buffer import StreamBuffer
 
 class TestCameraCapture:
     def setup_method(self):
+    """Test case for setup_method."""
         self.cam = CameraCapture("http://192.168.1.100/")
 
     def test_initial_state(self):
