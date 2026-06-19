@@ -13,6 +13,7 @@ Usage:
     python src/discover_esp32.py --watch           # watch serial until IP found
 """
 
+# ─── Standard Library ───────────────────────────────
 import argparse
 import json
 import os
