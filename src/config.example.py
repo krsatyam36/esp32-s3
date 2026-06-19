@@ -2,6 +2,7 @@
 ESP32_IP = "http://192.168.1.X/"
 
 # Optional overrides (can also be set via environment variables)
+# Ollama configuration
 # OLLAMA_URL = "http://localhost:11434"
 # OLLAMA_MODEL = "gemma3:latest"
 # OLLAMA_TIMEOUT = 60
