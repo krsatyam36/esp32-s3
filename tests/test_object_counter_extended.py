@@ -7,6 +7,7 @@ from src.ai.object_counter import ObjectCounter
 
 @pytest.fixture
 def counter():
+    """Test case for counter."""
     return ObjectCounter()
 
 
