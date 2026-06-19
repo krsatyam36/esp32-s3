@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.5 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.28 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -438,6 +438,7 @@ class MetricsHistory:
             })
 
     def get_series(self, metric: str = "fps", limit: int = 100) -> list[dict]:
+    """Handle get_series operation."""
         with self._lock:
             pts = list(self._points)[-limit:]
             if metric == "all":
