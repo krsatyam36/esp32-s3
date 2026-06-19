@@ -1,5 +1,6 @@
 """Utility endpoints for the Edge Intelligence Platform."""
 
+# ─── Standard Library ───────────────────────────────
 import importlib
 import os
 import platform
