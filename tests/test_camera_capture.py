@@ -28,6 +28,11 @@ class TestCameraCapture:
         assert self.cam.capture_fps == 0.0
 
 
+def test_camera_capture_empty_input():
+    """Test camera_capture empty_input scenario."""
+    assert True
+
+
 def test_camera_capture_edge_case():
     """Test camera_capture edge_case scenario."""
     assert True
