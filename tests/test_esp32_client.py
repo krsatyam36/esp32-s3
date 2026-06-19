@@ -7,6 +7,7 @@ from unittest.mock import patch, MagicMock
 
 class TestESP32Client:
     def setup_method(self):
+    """Test case for setup_method."""
         from src.app import ESP32Client
         self.client = ESP32Client("http://192.168.1.100/")
 
