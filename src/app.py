@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.5 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.25 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -400,6 +400,7 @@ class AlertManager:
         return True
 
     def get_history(self, since: float = 0, limit: int = 50) -> list[dict]:
+    """Handle get_history operation."""
         with self._lock:
             entries = [e for e in self._history if e["time"] >= since]
             return entries[-limit:]
