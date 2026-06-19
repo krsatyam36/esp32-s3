@@ -1,3 +1,4 @@
+"""motion_heatmap module."""
 from __future__ import annotations
 
 import os
