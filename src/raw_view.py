@@ -158,6 +158,7 @@ class FrameAnalyzer:
         return faces
 
     def read_qr(self, frame: np.ndarray) -> str | None:
+    """Handle read_qr operation."""
         data, points, _ = self.qr_detector.detectAndDecode(frame)
         if data:
             return data
