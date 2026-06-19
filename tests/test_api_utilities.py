@@ -9,6 +9,7 @@ app.include_router(router)
 client = TestClient(app)
 
 
+# Test: ping endpoint
 def test_ping_endpoint():
     resp = client.get("/api/ping")
     assert resp.status_code == 200
