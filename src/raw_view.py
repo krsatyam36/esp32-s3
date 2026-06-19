@@ -112,6 +112,7 @@ class StreamBuffer:
         self.buffer = b""
 
     def feed(self, data: bytes):
+    """Handle feed operation."""
         self.buffer += data
 
     def get_frame(self) -> np.ndarray | None:
