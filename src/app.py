@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.5 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.19 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -330,6 +330,7 @@ class SmartAlert:
         self.last_triggered = 0.0
 
     def check(self, objects: list[dict]) -> bool:
+    """Handle check operation."""
         if not self.rule.enabled:
             return False
         now = time.time()
