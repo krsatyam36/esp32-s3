@@ -6,6 +6,7 @@ import pytest
 
 
 def test_discover_default_timeout():
+    """Test case for test_discover_default_timeout."""
     from discover_esp32 import discover
     result = discover(timeout=1)
     assert result is None or isinstance(result, str)
