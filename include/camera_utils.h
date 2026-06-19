@@ -106,6 +106,7 @@ bool setSpecialEffect(int effect) {
     return (ret == 0);
 }
 
+// Handle setWhiteBalance request/operation.
 bool setWhiteBalance(int mode) {
     sensor_t *s = esp_camera_sensor_get();
     if (s == NULL) return false;
