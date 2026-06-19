@@ -5,6 +5,7 @@ from src.core.stream_buffer import StreamBuffer
 
 class TestStreamBuffer:
     def setup_method(self):
+    """Test case for setup_method."""
         self.buf = StreamBuffer()
 
     def test_feed_and_get_single_frame(self):
