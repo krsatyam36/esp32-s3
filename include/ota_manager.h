@@ -5,6 +5,7 @@
 
 #define OTA_HOSTNAME "xiao-esp32s3-cam"
 
+// Handle setupOTA request/operation.
 void setupOTA() {
     ArduinoOTA.setHostname(OTA_HOSTNAME);
 
