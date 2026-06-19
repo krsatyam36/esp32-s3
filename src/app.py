@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.5 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.16 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -125,6 +125,7 @@ class SceneClassifier:
         self._interval = 5.0
 
     def start(self):
+    """Handle start operation."""
         t = threading.Thread(target=self._loop, daemon=True)
         t.start()
 
@@ -196,11 +197,13 @@ class SceneClassifier:
 
     @property
     def current(self) -> str:
+    """Handle current operation."""
         with self._lock:
             return self._current_scene
 
     @property
     def history(self) -> list:
+    """Handle history operation."""
         with self._lock:
             return list(self._scene_history)
 
@@ -218,6 +221,7 @@ class TimelineEngine:
         self._lock = threading.Lock()
 
     def record_event(self, event_type: str, metadata: dict | None = None):
+    """Handle record_event operation."""
         with self._lock:
             now = time.time()
             self._entries.append({
@@ -230,6 +234,7 @@ class TimelineEngine:
                 self._active_events[event_type] = now
 
     def end_event(self, event_type: str):
+    """Handle end_event operation."""
         with self._lock:
             if event_type in self._active_events:
                 duration = time.time() - self._active_events.pop(event_type)
@@ -241,6 +246,7 @@ class TimelineEngine:
                 })
 
     def get_timeline(self, since: float = 0, limit: int = 50) -> list[dict]:
+    """Handle get_timeline operation."""
         with self._lock:
             entries = [e for e in self._entries if e["time"] >= since]
             return entries[-limit:]

@@ -3,6 +3,7 @@ ESP32-S3 Setup Validation Script.
 Checks all dependencies and configuration are correct.
 """
 
+# ─── Standard Library ───────────────────────────────
 import importlib
 import subprocess
 from pathlib import Path
