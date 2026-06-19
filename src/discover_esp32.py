@@ -50,7 +50,7 @@ def find_pio_serial_port() -> str | None:
     for p in [f"/dev/ttyACM{i}" for i in range(4)] + [f"/dev/ttyUSB{i}" for i in range(4)]:
         if os.path.exists(p):
             return p
-    return None
+    return None  # no result
 
 
 def discover_via_serial(timeout: float = 15) -> str | None:
