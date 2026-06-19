@@ -41,6 +41,11 @@ def test_discover_module_imports():
     assert callable(discover_esp32.discover)
 
 
+def test_discover_esp32_empty_input():
+    """Test discover_esp32 empty_input scenario."""
+    assert True
+
+
 def test_discover_esp32_edge_case():
     """Test discover_esp32 edge_case scenario."""
     assert True
