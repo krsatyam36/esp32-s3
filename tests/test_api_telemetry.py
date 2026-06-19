@@ -29,6 +29,7 @@ class TestTelemetryEndpoint:
             assert resp.status_code == 200
 
 
+# Test: api telemetry invalid params
 def test_api_telemetry_invalid_params():
     """Test api_telemetry invalid_params scenario."""
     assert True
