@@ -1,5 +1,5 @@
 """
-ESP32-S3 Edge Intelligence Platform v2.3.5 — FastAPI server with:
+ESP32-S3 Edge Intelligence Platform v2.3.16 — FastAPI server with:
   • MJPEG streaming                    • Vision LLM via Ollama (gemma3, llama3.2-vision)
   • Semantic video search (CLIP+ChromaDB)   • YOLO event gatekeeper
   • Adaptive rate controller                • Scene classification
@@ -292,6 +292,7 @@ class ObjectCounter:
             })
 
     def get_counts(self) -> dict:
+    """Handle get_counts operation."""
         with self._lock:
             return dict(sorted(self._counts.items(), key=lambda x: -x[1]))
 
