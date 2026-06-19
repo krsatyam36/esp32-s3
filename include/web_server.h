@@ -90,6 +90,7 @@ static esp_err_t snapshot_handler(httpd_req_t *req) {
     return res;
 }
 
+// Handle flip_handler request/operation.
 static esp_err_t flip_handler(httpd_req_t *req) {
     char buf[16];
     if (httpd_req_get_url_query_str(req, buf, sizeof(buf)) != ESP_OK) {
