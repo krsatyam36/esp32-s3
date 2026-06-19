@@ -26,6 +26,7 @@ void setupOTA() {
     Serial.println("OTA ready");
 }
 
+// Handle handleOTA request/operation.
 void handleOTA() {
     ArduinoOTA.handle();
 }
