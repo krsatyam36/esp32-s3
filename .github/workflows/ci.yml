@@ -44,7 +44,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: pip install pytest pytest-asyncio
       - run: python -m pytest tests/ -v --junitxml=report.xml
-      - uses: dorny/test-reporter@v1
+      - uses: dorny/test-reporter@v3
         if: success() || failure()
         with:
           name: pytest-py${{ matrix.python-version }}
