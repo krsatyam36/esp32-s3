@@ -1,0 +1,12 @@
+[Unit]
+Description=ESP32-S3 camera relay (single upstream MJPEG, fan-out viewer)
+After=network-online.target
+
+[Service]
+WorkingDirectory=/home/jetson1
+ExecStart=/usr/bin/python3 /home/jetson1/esp32_relay.py --port 8090
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

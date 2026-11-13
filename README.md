@@ -675,3 +675,16 @@ Built with ❤️ for reliable ESP32 video streaming
 Contributions and improvements welcome!
 
 </div>
+
+## On-device live detection
+
+This repository now also ships two ESP-IDF firmwares that run detection fully
+on the XIAO ESP32-S3 Sense and stream an annotated MJPEG feed:
+
+- `firmware/live_detect_bbox/` — ESP-DL pedestrian detector with **real bounding
+  boxes** (~117 ms, ~4 fps, 425 KB model).
+- `firmware/live_detect/` — lighter TFLite Micro person classifier (frame-level
+  indicator).
+
+See [`docs/ondevice-detection.md`](docs/ondevice-detection.md) for architecture,
+results, build/flash commands and caveats.

@@ -68,3 +68,10 @@ chroma_db/
 
 # OpenCode session state
 .opencode/
+
+# ESP-IDF firmware build artifacts
+firmware/**/build/
+firmware/**/sdkconfig
+firmware/**/sdkconfig.old
+firmware/**/managed_components/
+firmware/**/dependencies.lock
