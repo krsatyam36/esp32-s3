@@ -65,3 +65,6 @@ chroma_db/
 
 # Temp
 .dn
+
+# OpenCode session state
+.opencode/
